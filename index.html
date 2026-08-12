@@ -1,0 +1,2519 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CG Lua Protector</title>
+<style>
+  :root{
+    --bg: #0a0b10;
+    --panel: #0f1119;
+    --panel2: #141726;
+    --line: #232840;
+    --text: #e8ebf7;
+    --muted: #8a90b3;
+    --cyan: #4df3ff;
+    --magenta: #ff4dd8;
+    --violet: #9d6bff;
+    --green: #3dffb0;
+    --red: #ff5d7a;
+    --mono: 'JetBrains Mono','Fira Code',Consolas,monospace;
+    --sans: system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); }
+  body{
+    background:
+      radial-gradient(600px 300px at 10% -10%, rgba(77,243,255,0.08), transparent),
+      radial-gradient(600px 300px at 100% 0%, rgba(255,77,216,0.07), transparent),
+      var(--bg);
+  }
+
+  header{ padding:30px 32px 18px; border-bottom:1px solid var(--line); }
+  .title{
+    font-family:var(--mono); font-size:24px; font-weight:700; letter-spacing:0.5px;
+    background:linear-gradient(90deg, var(--cyan), var(--violet) 60%, var(--magenta));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    display:inline-block;
+  }
+  .subtitle{ color:var(--muted); font-family:var(--mono); font-size:12.5px; margin-top:6px; }
+  .disclaimer{
+    margin-top:14px; font-size:12px; color:var(--muted); font-family:var(--mono);
+    border-left:2px solid var(--violet); padding:8px 12px; max-width:900px; line-height:1.6;
+    background:rgba(157,107,255,0.06);
+  }
+  .disclaimer b{ color:var(--text); }
+
+  main{ padding:24px 32px 60px; max-width:1500px; margin:0 auto; }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:18px; }
+  @media (max-width:980px){ .grid{ grid-template-columns:1fr; } }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel2);
+    font-family:var(--mono); font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;
+  }
+  textarea{
+    flex:1; min-height:380px; resize:vertical; border:none; outline:none; background:transparent;
+    color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.6; padding:16px; tab-size:2;
+  }
+  #output{ color:var(--cyan); }
+  textarea::placeholder{ color:#454a66; }
+
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:16px 0; }
+  .btn{
+    font-family:var(--mono); font-size:13px; padding:11px 20px; border-radius:9px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--text); cursor:pointer;
+    transition:.15s ease; font-weight:600;
+  }
+  .btn:hover:not(:disabled){ border-color:var(--cyan); box-shadow:0 0 14px rgba(77,243,255,0.25); }
+  .btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .btn-primary{ background:linear-gradient(90deg, var(--cyan), var(--violet)); color:#04050a; border:none; }
+  .btn-primary:hover{ filter:brightness(1.1); box-shadow:0 0 20px rgba(157,107,255,0.4); }
+  .btn-file{ position:relative; overflow:hidden; }
+  .btn-file input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+  fieldset{ border:1px solid var(--line); border-radius:9px; padding:10px 14px; font-family:var(--mono); font-size:12.5px; }
+  legend{ color:var(--muted); padding:0 6px; }
+  label.opt{ display:inline-flex; align-items:center; gap:6px; margin-right:16px; cursor:pointer; }
+
+  .filename{ font-family:var(--mono); font-size:12px; color:var(--muted); }
+
+  .log{
+    font-family:var(--mono); font-size:12px; background:#05060a; border:1px solid var(--line);
+    border-radius:9px; padding:12px; height:150px; overflow-y:auto; margin-top:10px;
+  }
+  .log-line{ color:var(--muted); padding:1px 0; }
+  .log-line.ok{ color:var(--green); }
+  .log-line.err{ color:var(--red); }
+
+  .warnings{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+  .warn-pill{
+    font-family:var(--mono); font-size:12px; color:#ffd27a; background:rgba(255,180,80,0.08);
+    border:1px solid rgba(255,180,80,0.35); border-radius:8px; padding:8px 12px;
+  }
+
+  .stats{
+    display:none; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:16px;
+    font-family:var(--mono); font-size:12px; color:var(--muted);
+  }
+  .stats .card{ background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:12px; }
+  .stats b{ display:block; color:var(--cyan); font-size:18px; margin-bottom:2px; }
+
+  section.card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-top:22px;
+  }
+  section.card h3{ margin:0 0 6px; font-family:var(--mono); font-size:14px; color:var(--magenta); }
+  section.card p{ color:var(--muted); font-size:12.5px; line-height:1.6; margin:6px 0 14px; }
+  input[type=text], input[type=password]{
+    font-family:var(--mono); background:#05060a; border:1px solid var(--line); color:var(--text);
+    padding:9px 12px; border-radius:8px; width:100%; margin-bottom:8px; outline:none;
+  }
+  input[type=text]:focus, input[type=password]:focus{ border-color:var(--violet); }
+  #gistResult{ font-family:var(--mono); font-size:12.5px; margin-top:8px; color:var(--muted); word-break:break-all; }
+  #gistResult a{ color:var(--cyan); }
+
+  footer{ padding:20px 32px 50px; color:var(--muted); font-family:var(--mono); font-size:11.5px; line-height:1.7; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">CG LUA PROTECTOR</div>
+  <div class="subtitle">Lexer → Parser → AST → Custom Bytecode → Stack-based VM → Protected Lua Output — 100% client-side</div>
+  <div class="disclaimer">
+    <b>Đọc trước khi dùng:</b> Đây là công cụ tự viết (không dùng thư viện Lua obfuscation ngoài). Bộ lexer/parser/compiler/VM
+    đã được kiểm chứng bằng 18+ test case chạy qua một VM tham chiếu viết bằng JS (vì môi trường build này không có Lua interpreter
+    để chạy thật). Bản thân file <code>vm.js</code> — chương trình Lua sẽ thực thi output — là bản port thủ công từ VM tham chiếu đó,
+    được review kỹ nhưng <b>chưa được chạy trên Lua interpreter thật</b>. Hãy tự chạy thử script đã bảo vệ (đặc biệt mức Strong)
+    trước khi dùng cho việc quan trọng. Xem README để biết đầy đủ giới hạn (goto phức tạp, thuộc tính &lt;const&gt;/&lt;close&gt;
+    của 5.4, toán tử bitwise chỉ chạy trên Lua 5.3+...).
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-head">
+        <span>Lua gốc</span>
+        <span class="filename" id="fileName">chưa chọn file</span>
+      </div>
+      <textarea id="source" placeholder="-- dán code Lua của bạn, hoặc bấm Upload .lua bên dưới
+local function greet(name)
+  print('Xin chao, ' .. name)
+end
+greet('the gioi')"></textarea>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span>Kết quả đã bảo vệ</span>
+      </div>
+      <textarea id="output" placeholder="-- kết quả sẽ hiện ở đây" readonly></textarea>
+    </div>
+  </div>
+
+  <div class="row">
+    <button class="btn btn-file">📁 Upload .lua<input type="file" id="upload" accept=".lua"></button>
+
+    <fieldset>
+      <legend>Mức bảo vệ</legend>
+      <label class="opt"><input type="radio" name="level" value="light"> Light</label>
+      <label class="opt"><input type="radio" name="level" value="medium" checked> Medium</label>
+      <label class="opt"><input type="radio" name="level" value="strong"> Strong</label>
+    </fieldset>
+
+    <label class="opt" style="font-family:var(--mono); font-size:12.5px; color:var(--muted);">
+      <input type="checkbox" id="strictIntegrity"> Dừng cứng nếu integrity check fail (mặc định chỉ cảnh báo)
+    </label>
+  </div>
+
+  <div class="row">
+    <button class="btn btn-primary" id="protectBtn">▸ Protect / Obfuscate</button>
+    <button class="btn" id="downloadBtn" disabled>⬇ Download .lua</button>
+    <button class="btn" id="copyBtn" disabled>⧉ Copy Output</button>
+  </div>
+
+  <div class="warnings" id="warnings"></div>
+  <div class="log" id="log"></div>
+
+  <div class="stats" id="statsBox">
+    <div class="card"><b id="szBefore">—</b>kích thước gốc</div>
+    <div class="card"><b id="szAfter">—</b>kích thước sau</div>
+    <div class="card"><b id="ratio">—</b>tỉ lệ kích thước</div>
+    <div class="card"><b id="insBefore">—</b>instruction (trước optimize)</div>
+    <div class="card"><b id="insAfter">—</b>instruction (sau, gồm junk)</div>
+    <div class="card"><b id="constCount">—</b>constant pool<br><span id="protoCount" style="display:none"></span></div>
+  </div>
+
+  <section class="card">
+    <h3>Export lên GitHub Gist (tuỳ chọn)</h3>
+    <p>
+      Cần GitHub token của chính bạn với quyền <b>gist</b> — không được lưu trong source, chỉ giữ trong bộ nhớ tab này
+      trong phiên làm việc. Gọi thẳng GitHub API từ trình duyệt (endpoint Gist hỗ trợ CORS nên không cần backend).
+      Không dùng token có quyền rộng hơn mức cần thiết.
+    </p>
+    <input type="password" id="gistToken" placeholder="GitHub token (quyền: gist)">
+    <input type="text" id="gistDesc" placeholder="Mô tả gist (tuỳ chọn)">
+    <label class="opt" style="font-family:var(--mono); font-size:12.5px; color:var(--muted);">
+      <input type="checkbox" id="gistPublic"> Public gist (mặc định secret)
+    </label>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="gistBtn">↑ Xuất lên Gist</button>
+    </div>
+    <div id="gistResult"></div>
+  </section>
+</main>
+
+<footer>
+  Chạy hoàn toàn client-side — mã nguồn Lua của bạn không được gửi lên server nào (trừ khi bạn chủ động bấm "Xuất lên Gist").<br>
+  Xem <b>README.md</b> trong project để biết kiến trúc pipeline, giới hạn tương thích Lua 5.1–5.4, và cách chạy test suite.
+</footer>
+
+<script>
+/* ==== lexer.js ==== */
+/* lexer.js
+ * Lua tokenizer supporting a broad subset of Lua 5.1-5.4 lexical syntax:
+ * identifiers/keywords, numbers (int/float/hex/hex-float/scientific),
+ * short & long strings, short & long comments, all standard operators
+ * including 5.3+ bitwise (& | ~ << >> //).
+ *
+ * Exposes: (window.CG = window.CG||{}).Lexer.tokenize(source) -> Token[]
+ * Token: { type, value, line }
+ * type in: 'name','keyword','number','string','symbol','eof'
+ * For strings, `value` is the *decoded* string content (escapes resolved).
+ * Throws LexError with a line number on malformed input.
+ */
+(function (global) {
+  'use strict';
+
+  var KEYWORDS = new Set([
+    'and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for',
+    'function', 'goto', 'if', 'in', 'local', 'nil', 'not', 'or',
+    'repeat', 'return', 'then', 'true', 'until', 'while'
+  ]);
+
+  function LexError(msg, line) {
+    this.name = 'LexError';
+    this.message = msg + (line ? (' (line ' + line + ')') : '');
+    this.line = line;
+  }
+  LexError.prototype = Object.create(Error.prototype);
+
+  function isDigit(c) { return c >= '0' && c <= '9'; }
+  function isHexDigit(c) { return isDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
+  function isAlpha(c) { return c === '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
+  function isAlnum(c) { return isAlpha(c) || isDigit(c); }
+
+  function tokenize(src) {
+    var i = 0, n = src.length, line = 1;
+    var tokens = [];
+
+    function peek(o) { return src[i + (o || 0)]; }
+    function advance() {
+      var c = src[i++];
+      if (c === '\n') line++;
+      return c;
+    }
+
+    function longBracketLevel() {
+      // Assumes current char is '['. Returns level (# of '=') if this is a
+      // valid long-bracket opener [=*[, else -1 (and does not consume).
+      var j = i + 1, eq = 0;
+      while (src[j] === '=') { eq++; j++; }
+      if (src[j] === '[') return eq;
+      return -1;
+    }
+
+    function readLongBracket(level, startLine) {
+      // i currently at the opening '['. Consumes through matching closer.
+      i += level + 2; // skip [==[
+      if (src[i] === '\r') i++;
+      if (src[i] === '\n') { advance(); } // skip first newline per Lua spec
+      var start = i;
+      var closer = ']' + '='.repeat(level) + ']';
+      var end = src.indexOf(closer, i);
+      if (end === -1) throw new LexError('unterminated long bracket', startLine);
+      var content = src.slice(start, end);
+      // advance line counter & i
+      for (var k = start; k < end + closer.length; k++) { if (src[k] === '\n') line++; }
+      i = end + closer.length;
+      return content;
+    }
+
+    function readShortString(quote, startLine) {
+      var out = [];
+      advance(); // consume opening quote
+      while (true) {
+        if (i >= n) throw new LexError('unterminated string', startLine);
+        var c = src[i];
+        if (c === quote) { advance(); break; }
+        if (c === '\n') throw new LexError('unterminated string (newline in short string)', startLine);
+        if (c === '\\') {
+          advance();
+          var e = src[i];
+          switch (e) {
+            case 'n': out.push('\n'); advance(); break;
+            case 't': out.push('\t'); advance(); break;
+            case 'r': out.push('\r'); advance(); break;
+            case 'a': out.push('\x07'); advance(); break;
+            case 'b': out.push('\b'); advance(); break;
+            case 'f': out.push('\f'); advance(); break;
+            case 'v': out.push('\v'); advance(); break;
+            case '\\': out.push('\\'); advance(); break;
+            case '"': out.push('"'); advance(); break;
+            case "'": out.push("'"); advance(); break;
+            case '\n': out.push('\n'); advance(); break;
+            case 'z': { // skip following whitespace incl newlines
+              advance();
+              while (i < n && /\s/.test(src[i])) advance();
+              break;
+            }
+            case 'x': {
+              advance();
+              var hex = src.substr(i, 2);
+              if (!/^[0-9a-fA-F]{2}$/.test(hex)) throw new LexError('invalid \\x escape', line);
+              out.push(String.fromCharCode(parseInt(hex, 16)));
+              i += 2;
+              break;
+            }
+            default: {
+              if (isDigit(e)) {
+                var digits = '';
+                for (var d = 0; d < 3 && isDigit(src[i]); d++) { digits += src[i]; advance(); }
+                var code = parseInt(digits, 10);
+                if (code > 255) throw new LexError('decimal escape too large', line);
+                out.push(String.fromCharCode(code));
+              } else {
+                throw new LexError('invalid escape sequence \\' + e, line);
+              }
+            }
+          }
+          continue;
+        }
+        out.push(c);
+        advance();
+      }
+      return out.join('');
+    }
+
+    function readNumber() {
+      var start = i;
+      var isHex = false;
+      if (src[i] === '0' && (src[i + 1] === 'x' || src[i + 1] === 'X')) {
+        isHex = true;
+        i += 2;
+        while (i < n && isHexDigit(src[i])) i++;
+        if (src[i] === '.') { i++; while (i < n && isHexDigit(src[i])) i++; }
+        if (src[i] === 'p' || src[i] === 'P') {
+          i++;
+          if (src[i] === '+' || src[i] === '-') i++;
+          while (i < n && isDigit(src[i])) i++;
+        }
+      } else {
+        while (i < n && isDigit(src[i])) i++;
+        if (src[i] === '.') { i++; while (i < n && isDigit(src[i])) i++; }
+        if (src[i] === 'e' || src[i] === 'E') {
+          i++;
+          if (src[i] === '+' || src[i] === '-') i++;
+          while (i < n && isDigit(src[i])) i++;
+        }
+      }
+      var text = src.slice(start, i);
+      var val = isHex ? parseHexNumber(text) : parseFloat(text);
+      return { text: text, value: val };
+    }
+
+    function parseHexNumber(text) {
+      // supports 0x.. integer and 0x..p.. hex float (approx, via manual parse)
+      var m = /^0[xX]([0-9a-fA-F]*)(?:\.([0-9a-fA-F]*))?(?:[pP]([+-]?\d+))?$/.exec(text);
+      if (!m) return NaN;
+      var intPart = m[1] || '0';
+      var fracPart = m[2] || '';
+      var exp = m[3] ? parseInt(m[3], 10) : 0;
+      var value = parseInt(intPart || '0', 16) || 0;
+      for (var k = 0; k < fracPart.length; k++) {
+        value += parseInt(fracPart[k], 16) / Math.pow(16, k + 1);
+      }
+      value *= Math.pow(2, exp);
+      return value;
+    }
+
+    while (i < n) {
+      var c = src[i];
+
+      if (c === ' ' || c === '\t' || c === '\r' || c === '\n') { advance(); continue; }
+
+      var startLine = line;
+
+      // comments
+      if (c === '-' && src[i + 1] === '-') {
+        i += 2;
+        if (src[i] === '[') {
+          var lvl = longBracketLevel();
+          if (lvl >= 0) { readLongBracket(lvl, startLine); continue; }
+        }
+        while (i < n && src[i] !== '\n') i++;
+        continue;
+      }
+
+      // long strings
+      if (c === '[') {
+        var lvl2 = longBracketLevel();
+        if (lvl2 >= 0) {
+          var content = readLongBracket(lvl2, startLine);
+          tokens.push({ type: 'string', value: content, line: startLine, long: true });
+          continue;
+        }
+      }
+
+      if (c === '"' || c === "'") {
+        var s = readShortString(c, startLine);
+        tokens.push({ type: 'string', value: s, line: startLine });
+        continue;
+      }
+
+      if (isDigit(c) || (c === '.' && isDigit(src[i + 1]))) {
+        var num = readNumber();
+        tokens.push({ type: 'number', value: num.value, raw: num.text, line: startLine });
+        continue;
+      }
+
+      if (isAlpha(c)) {
+        var start2 = i;
+        while (i < n && isAlnum(src[i])) i++;
+        var word = src.slice(start2, i);
+        tokens.push({ type: KEYWORDS.has(word) ? 'keyword' : 'name', value: word, line: startLine });
+        continue;
+      }
+
+      // operators / symbols, longest-match-first
+      var three = src.substr(i, 3);
+      if (three === '...') { tokens.push({ type: 'symbol', value: three, line: startLine }); i += 3; continue; }
+      var two = src.substr(i, 2);
+      if (['==', '~=', '<=', '>=', '..', '::', '//', '<<', '>>'].indexOf(two) !== -1) {
+        tokens.push({ type: 'symbol', value: two, line: startLine }); i += 2; continue;
+      }
+      if ('+-*/%^#&~|<>=(){}[];:,.'.indexOf(c) !== -1) {
+        tokens.push({ type: 'symbol', value: c, line: startLine }); i++; continue;
+      }
+
+      throw new LexError('unexpected character ' + JSON.stringify(c), startLine);
+    }
+
+    tokens.push({ type: 'eof', value: null, line: line });
+    return tokens;
+  }
+
+  global.CG = global.CG || {};
+  global.CG.Lexer = { tokenize: tokenize, LexError: LexError };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== parser.js ==== */
+/* parser.js
+ * Recursive-descent parser: Token[] -> AST
+ * Grammar follows the Lua 5.1-5.4 reference grammar for the supported
+ * subset (see README "Compatibility & limitations").
+ */
+(function (global) {
+  'use strict';
+
+  function ParseError(msg, line) {
+    this.name = 'ParseError';
+    this.message = msg + (line ? (' (line ' + line + ')') : '');
+    this.line = line;
+  }
+  ParseError.prototype = Object.create(Error.prototype);
+
+  // binary operator precedence (Lua 5.4 table); [left, right] binding powers
+  var BINPRI = {
+    'or': [1, 1], 'and': [2, 2],
+    '<': [3, 3], '>': [3, 3], '<=': [3, 3], '>=': [3, 3], '~=': [3, 3], '==': [3, 3],
+    '|': [4, 4], '~': [5, 5], '&': [6, 6],
+    '<<': [7, 7], '>>': [7, 7],
+    '..': [9, 8], // right assoc
+    '+': [10, 10], '-': [10, 10],
+    '*': [11, 11], '/': [11, 11], '//': [11, 11], '%': [11, 11],
+    '^': [14, 13] // right assoc, binds tighter than unary
+  };
+  var UNARY_PRI = 12;
+
+  function parse(tokens) {
+    var pos = 0;
+
+    function cur() { return tokens[pos]; }
+    function la(o) { return tokens[pos + (o || 0)]; }
+    function line() { return cur().line; }
+
+    function isKw(kw) { return cur().type === 'keyword' && cur().value === kw; }
+    function isSym(s) { return cur().type === 'symbol' && cur().value === s; }
+
+    function advance() { return tokens[pos++]; }
+
+    function expectSym(s) {
+      if (!isSym(s)) throw new ParseError("expected '" + s + "' but got '" + cur().value + "'", line());
+      return advance();
+    }
+    function expectKw(kw) {
+      if (!isKw(kw)) throw new ParseError("expected '" + kw + "' but got '" + cur().value + "'", line());
+      return advance();
+    }
+    function expectName() {
+      if (cur().type !== 'name') throw new ParseError('expected identifier but got ' + JSON.stringify(cur().value), line());
+      return advance().value;
+    }
+
+    function blockEnd() {
+      if (cur().type === 'eof') return true;
+      if (cur().type !== 'keyword') return false;
+      return ['end', 'else', 'elseif', 'until'].indexOf(cur().value) !== -1;
+    }
+
+    function parseBlock() {
+      var stmts = [];
+      while (!blockEnd()) {
+        if (isKw('return')) { stmts.push(parseReturn()); break; }
+        var s = parseStatement();
+        if (s) stmts.push(s);
+      }
+      return { type: 'Block', stmts: stmts };
+    }
+
+    function parseReturn() {
+      var ln = line();
+      advance(); // 'return'
+      var exprs = [];
+      if (!blockEnd() && !isSym(';')) exprs = parseExprList();
+      if (isSym(';')) advance();
+      return { type: 'ReturnStmt', exprs: exprs, line: ln };
+    }
+
+    function parseStatement() {
+      var ln = line();
+      if (isSym(';')) { advance(); return null; }
+      if (isSym('::')) {
+        advance();
+        var lname = expectName();
+        expectSym('::');
+        return { type: 'LabelStmt', name: lname, line: ln };
+      }
+      if (isKw('break')) { advance(); return { type: 'BreakStmt', line: ln }; }
+      if (isKw('goto')) { advance(); var gname = expectName(); return { type: 'GotoStmt', label: gname, line: ln }; }
+      if (isKw('do')) {
+        advance();
+        var body = parseBlock();
+        expectKw('end');
+        return { type: 'DoStmt', body: body, line: ln };
+      }
+      if (isKw('while')) {
+        advance();
+        var cond = parseExpr();
+        expectKw('do');
+        var wbody = parseBlock();
+        expectKw('end');
+        return { type: 'WhileStmt', cond: cond, body: wbody, line: ln };
+      }
+      if (isKw('repeat')) {
+        advance();
+        var rbody = parseBlock();
+        expectKw('until');
+        var rcond = parseExpr();
+        return { type: 'RepeatStmt', body: rbody, cond: rcond, line: ln };
+      }
+      if (isKw('if')) return parseIf();
+      if (isKw('for')) return parseFor();
+      if (isKw('function')) return parseFunctionStmt();
+      if (isKw('local')) return parseLocal();
+      return parseExprStatement();
+    }
+
+    function parseIf() {
+      var ln = line();
+      advance(); // if
+      var clauses = [];
+      var cond = parseExpr();
+      expectKw('then');
+      var body = parseBlock();
+      clauses.push({ cond: cond, body: body });
+      while (isKw('elseif')) {
+        advance();
+        var c2 = parseExpr();
+        expectKw('then');
+        var b2 = parseBlock();
+        clauses.push({ cond: c2, body: b2 });
+      }
+      var elseBody = null;
+      if (isKw('else')) { advance(); elseBody = parseBlock(); }
+      expectKw('end');
+      return { type: 'IfStmt', clauses: clauses, elseBody: elseBody, line: ln };
+    }
+
+    function parseFor() {
+      var ln = line();
+      advance(); // for
+      var name1 = expectName();
+      if (isSym('=')) {
+        advance();
+        var start = parseExpr();
+        expectSym(',');
+        var stop = parseExpr();
+        var step = null;
+        if (isSym(',')) { advance(); step = parseExpr(); }
+        expectKw('do');
+        var body = parseBlock();
+        expectKw('end');
+        return { type: 'NumericForStmt', varName: name1, start: start, stop: stop, step: step, body: body, line: ln };
+      } else {
+        var names = [name1];
+        while (isSym(',')) { advance(); names.push(expectName()); }
+        expectKw('in');
+        var exprs = parseExprList();
+        expectKw('do');
+        var gbody = parseBlock();
+        expectKw('end');
+        return { type: 'GenericForStmt', names: names, exprs: exprs, body: gbody, line: ln };
+      }
+    }
+
+    function parseFuncBody(isMethod) {
+      expectSym('(');
+      var params = [];
+      var isVararg = false;
+      if (isMethod) params.push('self');
+      if (!isSym(')')) {
+        while (true) {
+          if (isSym('...')) { advance(); isVararg = true; break; }
+          params.push(expectName());
+          if (isSym(',')) { advance(); continue; }
+          break;
+        }
+      }
+      expectSym(')');
+      var body = parseBlock();
+      expectKw('end');
+      return { type: 'Function', params: params, isVararg: isVararg, body: body };
+    }
+
+    function parseFunctionStmt() {
+      var ln = line();
+      advance(); // function
+      var nameExpr = { type: 'Name', name: expectName() };
+      var isMethod = false;
+      while (isSym('.') || isSym(':')) {
+        var isColon = isSym(':');
+        advance();
+        var field = expectName();
+        nameExpr = { type: 'Index', obj: nameExpr, key: { type: 'String', value: field }, dotSyntax: true };
+        if (isColon) { isMethod = true; break; }
+      }
+      var func = parseFuncBody(isMethod);
+      return { type: 'FunctionDeclStmt', target: nameExpr, func: func, line: ln };
+    }
+
+    function parseLocal() {
+      var ln = line();
+      advance(); // local
+      if (isKw('function')) {
+        advance();
+        var fname = expectName();
+        var func = parseFuncBody(false);
+        return { type: 'LocalFunctionStmt', name: fname, func: func, line: ln };
+      }
+      var names = [];
+      while (true) {
+        var nm = expectName();
+        var attrib = null;
+        if (isSym('<')) { advance(); attrib = expectName(); expectSym('>'); }
+        names.push({ name: nm, attrib: attrib });
+        if (isSym(',')) { advance(); continue; }
+        break;
+      }
+      var exprs = [];
+      if (isSym('=')) { advance(); exprs = parseExprList(); }
+      return { type: 'LocalStmt', names: names, exprs: exprs, line: ln };
+    }
+
+    function parseExprStatement() {
+      var ln = line();
+      var e = parseSuffixedExpr();
+      if (isSym('=') || isSym(',')) {
+        var targets = [e];
+        while (isSym(',')) { advance(); targets.push(parseSuffixedExpr()); }
+        expectSym('=');
+        var exprs = parseExprList();
+        targets.forEach(function (t) {
+          if (t.type !== 'Name' && t.type !== 'Index') {
+            throw new ParseError('cannot assign to this expression', ln);
+          }
+        });
+        return { type: 'AssignStmt', targets: targets, exprs: exprs, line: ln };
+      }
+      if (e.type !== 'Call') throw new ParseError('syntax error: expression statement must be a function call', ln);
+      return { type: 'CallStmt', call: e, line: ln };
+    }
+
+    function parseExprList() {
+      var list = [parseExpr()];
+      while (isSym(',')) { advance(); list.push(parseExpr()); }
+      return list;
+    }
+
+    function parsePrimaryExpr() {
+      var ln = line();
+      if (isSym('(')) {
+        advance();
+        var e = parseExpr();
+        expectSym(')');
+        return { type: 'Paren', expr: e, line: ln };
+      }
+      if (cur().type === 'name') {
+        return { type: 'Name', name: advance().value, line: ln };
+      }
+      throw new ParseError('unexpected token ' + JSON.stringify(cur().value), ln);
+    }
+
+    function parseSuffixedExpr() {
+      var e = parsePrimaryExpr();
+      while (true) {
+        var ln = line();
+        if (isSym('.')) {
+          advance();
+          var field = expectName();
+          e = { type: 'Index', obj: e, key: { type: 'String', value: field }, dotSyntax: true, line: ln };
+        } else if (isSym('[')) {
+          advance();
+          var key = parseExpr();
+          expectSym(']');
+          e = { type: 'Index', obj: e, key: key, line: ln };
+        } else if (isSym(':')) {
+          advance();
+          var mname = expectName();
+          var args = parseArgs();
+          e = { type: 'Call', func: e, method: mname, args: args, line: ln };
+        } else if (isSym('(') || isSym('{') || cur().type === 'string') {
+          var args2 = parseArgs();
+          e = { type: 'Call', func: e, method: null, args: args2, line: ln };
+        } else {
+          break;
+        }
+      }
+      return e;
+    }
+
+    function parseArgs() {
+      if (cur().type === 'string') {
+        var s = advance();
+        return [{ type: 'String', value: s.value, line: s.line }];
+      }
+      if (isSym('{')) return [parseTable()];
+      expectSym('(');
+      var args = [];
+      if (!isSym(')')) args = parseExprList();
+      expectSym(')');
+      return args;
+    }
+
+    function parseTable() {
+      var ln = line();
+      expectSym('{');
+      var fields = [];
+      while (!isSym('}')) {
+        if (isSym('[')) {
+          advance();
+          var key = parseExpr();
+          expectSym(']');
+          expectSym('=');
+          var val = parseExpr();
+          fields.push({ type: 'expr', key: key, value: val });
+        } else if (cur().type === 'name' && la(1).type === 'symbol' && la(1).value === '=') {
+          var kname = advance().value;
+          advance(); // =
+          var val2 = parseExpr();
+          fields.push({ type: 'named', key: kname, value: val2 });
+        } else {
+          fields.push({ type: 'pos', value: parseExpr() });
+        }
+        if (isSym(',') || isSym(';')) { advance(); continue; }
+        break;
+      }
+      expectSym('}');
+      return { type: 'Table', fields: fields, line: ln };
+    }
+
+    function parseSimpleExpr() {
+      var ln = line();
+      if (cur().type === 'number') { var t = advance(); return { type: 'Number', value: t.value, line: ln }; }
+      if (cur().type === 'string') { var t2 = advance(); return { type: 'String', value: t2.value, line: ln }; }
+      if (isKw('nil')) { advance(); return { type: 'Nil', line: ln }; }
+      if (isKw('true')) { advance(); return { type: 'True', line: ln }; }
+      if (isKw('false')) { advance(); return { type: 'False', line: ln }; }
+      if (isSym('...')) { advance(); return { type: 'Vararg', line: ln }; }
+      if (isSym('{')) return parseTable();
+      if (isKw('function')) { advance(); return parseFuncBody(false); }
+      return parseSuffixedExpr();
+    }
+
+    function parseUnary() {
+      var ln = line();
+      if (isKw('not') || isSym('-') || isSym('#') || isSym('~')) {
+        var op = advance().value;
+        var e = parseSubExpr(UNARY_PRI);
+        return { type: 'Unop', op: op, expr: e, line: ln };
+      }
+      return parseSimpleExpr();
+    }
+
+    function parseSubExpr(limit) {
+      var left = parseUnary();
+      while (true) {
+        var tok = cur();
+        var opName = tok.type === 'keyword' && (tok.value === 'and' || tok.value === 'or') ? tok.value
+          : (tok.type === 'symbol' ? tok.value : null);
+        var pri = opName != null ? BINPRI[opName] : null;
+        if (!pri || pri[0] <= limit) break;
+        advance();
+        var right = parseSubExpr(pri[1]);
+        left = { type: 'Binop', op: opName, left: left, right: right, line: tok.line };
+      }
+      return left;
+    }
+
+    function parseExpr() { return parseSubExpr(0); }
+
+    var block = parseBlock();
+    if (cur().type !== 'eof') throw new ParseError('unexpected token after program end: ' + JSON.stringify(cur().value), line());
+    return block;
+  }
+
+  global.CG = global.CG || {};
+  global.CG.Parser = { parse: parse, ParseError: ParseError };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== ir.js ==== */
+/* ir.js
+ * Instruction set definition + Proto (function prototype) structure.
+ * A Proto is one compiled function: numParams, isVararg, a flat
+ * instruction array, a constant pool, nested Protos (for closures),
+ * and an upvalue descriptor list.
+ *
+ * Instruction shape: { op: 'OPNAME', a, b, c, line }
+ * (fields used depend on op; unused fields simply omitted/undefined)
+ */
+(function (global) {
+  'use strict';
+
+  // Canonical opcode list (symbolic names). The encoder is free to remap
+  // these to shuffled numeric ids per build; the compiler/optimizer only
+  // ever deal with symbolic names.
+  var OPCODES = [
+    'PUSHK', 'PUSHNIL', 'PUSHTRUE', 'PUSHFALSE',
+    'NEWLOCAL', 'GETLOCAL', 'SETLOCAL',
+    'GETUPVAL', 'SETUPVAL',
+    'GETGLOBAL', 'SETGLOBAL',
+    'NEWTABLE', 'GETTABLE', 'SETTABLE', 'DUP', 'POP',
+    'MARK',
+    'PUSHVARARG_ALL', 'PUSHVARARG1',
+    'CALL', 'RETURN',
+    'CLOSURE',
+    'JMP', 'JMPIF', 'JMPIFNOT',
+    'BINOP', 'UNOP',
+    'APPENDALL', 'ADJUST',
+    'JUNK', // no-op-equivalent inserted for obfuscation; interpreted as a harmless self-cancelling op
+    'NOP'
+  ];
+
+  function Proto() {
+    this.numParams = 0;
+    this.isVararg = false;
+    this.instructions = [];
+    this.constants = [];   // pool of literal values (numbers/strings/booleans unused directly but kept simple: numbers & strings)
+    this.protos = [];      // nested function prototypes
+    this.upvalues = [];    // [{ fromParentLocal: slot } | { fromParentUpval: idx }]
+    this.numLocals = 0;    // total local slots used (for pre-sizing, informational)
+    this.name = 'proto';
+  }
+
+  Proto.prototype.emit = function (op, a, b, c, line) {
+    var idx = this.instructions.length;
+    this.instructions.push({ op: op, a: a, b: b, c: c, line: line });
+    return idx;
+  };
+
+  Proto.prototype.addConst = function (val) {
+    // dedupe by value+type for a smaller/cleaner pool
+    for (var i = 0; i < this.constants.length; i++) {
+      var c = this.constants[i];
+      if (c.type === (typeof val === 'string' ? 'string' : (typeof val === 'number' ? 'number' : 'other')) &&
+          c.value === val) return i;
+    }
+    var t = typeof val === 'string' ? 'string' : (typeof val === 'number' ? 'number' : 'other');
+    this.constants.push({ type: t, value: val });
+    return this.constants.length - 1;
+  };
+
+  global.CG = global.CG || {};
+  global.CG.IR = { OPCODES: OPCODES, Proto: Proto };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== compiler.js ==== */
+/* compiler.js
+ * AST -> bytecode compiler. Produces a tree of CG.IR.Proto objects.
+ *
+ * Design notes (see README for the full rationale):
+ * - Every Lua local variable is stored as a one-element "box" so that
+ *   closures can capture it by reference (upvalues), matching real Lua
+ *   closure semantics.
+ * - Multi-value contexts (call args, return, table constructor tail,
+ *   multiple assignment) use a MARK/argc-at-runtime protocol so the
+ *   compiler never needs to know result counts statically.
+ * - Global access goes through the host's real `_G` table, and table
+ *   indexing/calls/arithmetic are emitted as instructions that the VM
+ *   runtime performs using the *real* Lua operators/values -- so
+ *   metatables, coroutines, pcall, and numeric coercion rules are
+ *   inherited from the actual Lua host running the output, not
+ *   reimplemented from scratch.
+ */
+(function (global) {
+  'use strict';
+
+  function CompileError(msg, line) {
+    this.name = 'CompileError';
+    this.message = msg + (line ? (' (line ' + line + ')') : '');
+    this.line = line;
+  }
+  CompileError.prototype = Object.create(Error.prototype);
+
+  var Proto = global.CG.IR.Proto;
+
+  function FuncState(parent, proto) {
+    this.parent = parent || null;
+    this.proto = proto;
+    this.scopes = [new Map()];
+    this.nextSlot = 0;
+    this.upvalMap = {}; // name -> idx
+    this.loopStack = [];
+    this.pendingGotos = [];
+    this.labels = {};
+  }
+  FuncState.prototype.enterScope = function () { this.scopes.push(new Map()); };
+  FuncState.prototype.exitScope = function () { this.scopes.pop(); };
+  FuncState.prototype.declareLocal = function (name) {
+    var slot = this.nextSlot++;
+    this.scopes[this.scopes.length - 1].set(name, slot);
+    if (slot + 1 > this.proto.numLocals) this.proto.numLocals = slot + 1;
+    return slot;
+  };
+  FuncState.prototype.lookupLocal = function (name) {
+    for (var i = this.scopes.length - 1; i >= 0; i--) {
+      if (this.scopes[i].has(name)) return this.scopes[i].get(name);
+    }
+    return undefined;
+  };
+  FuncState.prototype.addUpvalue = function (name, desc) {
+    if (Object.prototype.hasOwnProperty.call(this.upvalMap, name)) return this.upvalMap[name];
+    var idx = this.proto.upvalues.length;
+    this.proto.upvalues.push(desc);
+    this.upvalMap[name] = idx;
+    return idx;
+  };
+  FuncState.prototype.here = function () { return this.proto.instructions.length; };
+  FuncState.prototype.emit = function (op, a, b, c, line) { return this.proto.emit(op, a, b, c, line); };
+  FuncState.prototype.patch = function (idx, addr) { this.proto.instructions[idx].a = addr; };
+  FuncState.prototype.pushLoop = function () { this.loopStack.push([]); };
+  FuncState.prototype.popLoopAndPatch = function (endAddr) {
+    var breaks = this.loopStack.pop();
+    var self = this;
+    breaks.forEach(function (idx) { self.patch(idx, endAddr); });
+  };
+
+  function resolveVar(fs, name) {
+    var slot = fs.lookupLocal(name);
+    if (slot !== undefined) return { kind: 'local', slot: slot };
+    if (fs.parent) {
+      var res = resolveVar(fs.parent, name);
+      if (res.kind === 'local') return { kind: 'upval', idx: fs.addUpvalue(name, { fromParentLocal: res.slot }) };
+      if (res.kind === 'upval') return { kind: 'upval', idx: fs.addUpvalue(name, { fromParentUpval: res.idx }) };
+      return { kind: 'global' };
+    }
+    return { kind: 'global' };
+  }
+
+  function isMultiExpr(e) { return e.type === 'Call' || e.type === 'Vararg'; }
+
+  function compileProgram(ast) {
+    var proto = new Proto();
+    proto.name = 'main';
+    proto.isVararg = true;
+    proto.numParams = 0;
+    var fs = new FuncState(null, proto);
+    compileStmts(ast.stmts, fs);
+    fs.emit('MARK');
+    fs.emit('RETURN');
+    resolveGotos(fs);
+    return proto;
+  }
+
+  function resolveGotos(fs) {
+    fs.pendingGotos.forEach(function (g) {
+      if (!Object.prototype.hasOwnProperty.call(fs.labels, g.label)) {
+        throw new CompileError("no visible label '" + g.label + "' for goto", g.line);
+      }
+      fs.patch(g.idx, fs.labels[g.label]);
+    });
+  }
+
+  function compileBlock(block, fs) {
+    fs.enterScope();
+    compileStmts(block.stmts, fs);
+    fs.exitScope();
+  }
+
+  function compileStmts(stmts, fs) {
+    // Record "safe points" -- positions where the operand stack is
+    // guaranteed empty (statement boundaries) -- as candidates for later
+    // junk-instruction insertion (see optimizer/encoder). This is far
+    // safer than trying to rediscover them via static analysis later.
+    fs.proto.safePoints = fs.proto.safePoints || [];
+    for (var i = 0; i < stmts.length; i++) {
+      fs.proto.safePoints.push(fs.here());
+      compileStmt(stmts[i], fs);
+    }
+    fs.proto.safePoints.push(fs.here());
+  }
+
+  function compileStmt(s, fs) {
+    switch (s.type) {
+      case 'LocalStmt': return compileLocalStmt(s, fs);
+      case 'AssignStmt': return compileAssignStmt(s, fs);
+      case 'CallStmt': return void compileCall(s.call, fs, 0);
+      case 'DoStmt': return compileBlock(s.body, fs);
+      case 'WhileStmt': return compileWhile(s, fs);
+      case 'RepeatStmt': return compileRepeat(s, fs);
+      case 'IfStmt': return compileIf(s, fs);
+      case 'NumericForStmt': return compileNumericFor(s, fs);
+      case 'GenericForStmt': return compileGenericFor(s, fs);
+      case 'FunctionDeclStmt': return compileFunctionDecl(s, fs);
+      case 'LocalFunctionStmt': return compileLocalFunctionStmt(s, fs);
+      case 'ReturnStmt': return compileReturn(s, fs);
+      case 'BreakStmt':
+        if (fs.loopStack.length === 0) throw new CompileError('break outside a loop', s.line);
+        var idx = fs.emit('JMP', null, null, null, s.line);
+        fs.loopStack[fs.loopStack.length - 1].push(idx);
+        return;
+      case 'GotoStmt':
+        var gidx = fs.emit('JMP', null, null, null, s.line);
+        fs.pendingGotos.push({ idx: gidx, label: s.label, line: s.line });
+        return;
+      case 'LabelStmt':
+        fs.labels[s.name] = fs.here();
+        return;
+      default:
+        throw new CompileError('unsupported statement type ' + s.type, s.line);
+    }
+  }
+
+  // ---- multi-value list helpers (MARK/ADJUST protocol) ----
+
+  function pushExprListWithMark(list, fs) {
+    fs.emit('MARK');
+    for (var i = 0; i < list.length; i++) {
+      var isLast = i === list.length - 1;
+      if (isLast && isMultiExpr(list[i])) compileExprMultiAll(list[i], fs);
+      else compileExprSingle(list[i], fs);
+    }
+  }
+
+  function compileExprMultiAll(e, fs) {
+    if (e.type === 'Call') return void compileCall(e, fs, -1);
+    if (e.type === 'Vararg') return void fs.emit('PUSHVARARG_ALL', null, null, null, e.line);
+    compileExprSingle(e, fs);
+  }
+
+  // ---- local declarations / assignment ----
+
+  function compileLocalStmt(s, fs) {
+    pushExprListWithMark(s.exprs, fs);
+    fs.emit('ADJUST', s.names.length);
+    // pop values in reverse, bind to fresh boxes in reverse (see README)
+    for (var i = s.names.length - 1; i >= 0; i--) {
+      var slot = fs.declareLocal(s.names[i].name);
+      fs.emit('NEWLOCAL', slot);
+      fs.emit('SETLOCAL', slot);
+    }
+  }
+
+  function compileAssignStmt(s, fs) {
+    // Pre-push obj/key for Index targets (left-to-right) before evaluating RHS.
+    var targetInfo = s.targets.map(function (t) {
+      if (t.type === 'Name') return { kind: 'name', node: t };
+      if (t.type === 'Index') {
+        compileExprSingle(t.obj, fs);
+        compileExprSingle(t.key, fs);
+        return { kind: 'index' };
+      }
+      throw new CompileError('invalid assignment target', s.line);
+    });
+
+    pushExprListWithMark(s.exprs, fs);
+    fs.emit('ADJUST', s.targets.length);
+
+    // Stash the N adjusted values into temp locals (values arrive top-first = last target first).
+    var n = s.targets.length;
+    var tmpSlots = new Array(n);
+    for (var k = n - 1; k >= 0; k--) {
+      var tmp = fs.declareLocal('%tmp_assign_' + fs.here() + '_' + k);
+      fs.emit('NEWLOCAL', tmp);
+      fs.emit('SETLOCAL', tmp);
+      tmpSlots[k] = tmp;
+    }
+
+    // Now pop obj/key pairs (still on stack, forward order) in reverse target order,
+    // combining with the stashed values, and perform the actual assignment.
+    for (var j = n - 1; j >= 0; j--) {
+      var info = targetInfo[j];
+      if (info.kind === 'name') {
+        var res = resolveVar(fs, info.node.name);
+        fs.emit('GETLOCAL', tmpSlots[j]); // placeholder read, replaced below per-kind
+        fs.instructions_fix_noop && 0;
+        // overwrite last emitted GETLOCAL with the correct store sequence:
+        fs.proto.instructions.pop();
+        fs.emit('GETLOCAL', tmpSlots[j]);
+        if (res.kind === 'local') fs.emit('SETLOCAL', res.slot);
+        else if (res.kind === 'upval') fs.emit('SETUPVAL', res.idx);
+        else fs.emit('SETGLOBAL', fs.proto.addConst(info.node.name));
+      } else {
+        // stack currently (top-down): ... key, obj  (pushed obj then key, so key is on top)
+        fs.emit('GETLOCAL', tmpSlots[j]); // value
+        // need order for SETTABLE: pop val, pop key, pop obj -> so push val, then we need key,obj already below in [obj,key] order (obj pushed first => deeper). SETTABLE expects stack [...,obj,key,val] top=val.
+        // Currently after GETLOCAL(value) stack top-down: val, key, obj(deeper) -- matches required order already.
+        fs.emit('SETTABLE');
+      }
+    }
+  }
+
+  function compileExprSingle(e, fs) {
+    switch (e.type) {
+      case 'Nil': return void fs.emit('PUSHNIL', null, null, null, e.line);
+      case 'True': return void fs.emit('PUSHTRUE', null, null, null, e.line);
+      case 'False': return void fs.emit('PUSHFALSE', null, null, null, e.line);
+      case 'Number': return void fs.emit('PUSHK', fs.proto.addConst(e.value), null, null, e.line);
+      case 'String': return void fs.emit('PUSHK', fs.proto.addConst(e.value), null, null, e.line);
+      case 'Vararg': return void fs.emit('PUSHVARARG1', null, null, null, e.line);
+      case 'Paren': return compileExprSingle(e.expr, fs);
+      case 'Name': return compileNameRead(e, fs);
+      case 'Index': {
+        compileExprSingle(e.obj, fs);
+        compileExprSingle(e.key, fs);
+        fs.emit('GETTABLE', null, null, null, e.line);
+        return;
+      }
+      case 'Call': return void compileCall(e, fs, 1);
+      case 'Function': return void compileFunctionExpr(e, fs);
+      case 'Table': return compileTable(e, fs);
+      case 'Binop': return compileBinop(e, fs);
+      case 'Unop': {
+        compileExprSingle(e.expr, fs);
+        fs.emit('UNOP', e.op, null, null, e.line);
+        return;
+      }
+      default:
+        throw new CompileError('unsupported expression type ' + e.type, e.line);
+    }
+  }
+
+  function compileNameRead(e, fs) {
+    var res = resolveVar(fs, e.name);
+    if (res.kind === 'local') fs.emit('GETLOCAL', res.slot, null, null, e.line);
+    else if (res.kind === 'upval') fs.emit('GETUPVAL', res.idx, null, null, e.line);
+    else fs.emit('GETGLOBAL', fs.proto.addConst(e.name), null, null, e.line);
+  }
+
+  function compileBinop(e, fs) {
+    if (e.op === 'and') {
+      compileExprSingle(e.left, fs);
+      fs.emit('DUP');
+      var jf = fs.emit('JMPIFNOT');
+      fs.emit('POP', 1);
+      compileExprSingle(e.right, fs);
+      fs.patch(jf, fs.here());
+      return;
+    }
+    if (e.op === 'or') {
+      compileExprSingle(e.left, fs);
+      fs.emit('DUP');
+      var jt = fs.emit('JMPIF');
+      fs.emit('POP', 1);
+      compileExprSingle(e.right, fs);
+      fs.patch(jt, fs.here());
+      return;
+    }
+    compileExprSingle(e.left, fs);
+    compileExprSingle(e.right, fs);
+    fs.emit('BINOP', e.op, null, null, e.line);
+  }
+
+  function compileTable(e, fs) {
+    fs.emit('NEWTABLE', null, null, null, e.line);
+    var arrIndex = 1;
+    for (var i = 0; i < e.fields.length; i++) {
+      var f = e.fields[i];
+      var isLast = i === e.fields.length - 1;
+      if (f.type === 'pos') {
+        if (isLast && isMultiExpr(f.value)) {
+          fs.emit('MARK');
+          compileExprMultiAll(f.value, fs);
+          fs.emit('APPENDALL', arrIndex);
+        } else {
+          fs.emit('DUP');
+          fs.emit('PUSHK', fs.proto.addConst(arrIndex));
+          compileExprSingle(f.value, fs);
+          fs.emit('SETTABLE');
+          arrIndex++;
+        }
+      } else if (f.type === 'named') {
+        fs.emit('DUP');
+        fs.emit('PUSHK', fs.proto.addConst(f.key));
+        compileExprSingle(f.value, fs);
+        fs.emit('SETTABLE');
+      } else { // 'expr'
+        fs.emit('DUP');
+        compileExprSingle(f.key, fs);
+        compileExprSingle(f.value, fs);
+        fs.emit('SETTABLE');
+      }
+    }
+  }
+
+  // ---- calls ----
+
+  function compileCall(callNode, fs, want) {
+    if (callNode.method) {
+      var tmp = fs.declareLocal('%tmp_self_' + fs.here());
+      compileExprSingle(callNode.func, fs);
+      fs.emit('NEWLOCAL', tmp);
+      fs.emit('SETLOCAL', tmp);
+      fs.emit('GETLOCAL', tmp);
+      fs.emit('PUSHK', fs.proto.addConst(callNode.method));
+      fs.emit('GETTABLE');
+      fs.emit('MARK');
+      fs.emit('GETLOCAL', tmp);
+      pushArgsAfterFirst(callNode.args, fs);
+      fs.emit('CALL', want, null, null, callNode.line);
+    } else {
+      compileExprSingle(callNode.func, fs);
+      fs.emit('MARK');
+      pushArgsAfterFirst(callNode.args, fs, true);
+      fs.emit('CALL', want, null, null, callNode.line);
+    }
+  }
+
+  function pushArgsAfterFirst(args, fs, isFull) {
+    // isFull=true means `args` is the complete list (no implicit self already pushed)
+    for (var i = 0; i < args.length; i++) {
+      var isLast = i === args.length - 1;
+      if (isLast && isMultiExpr(args[i])) compileExprMultiAll(args[i], fs);
+      else compileExprSingle(args[i], fs);
+    }
+  }
+
+  // ---- functions / closures ----
+
+  function compileFunctionExpr(fnode, fs) {
+    var proto = new Proto();
+    proto.name = 'anon';
+    proto.numParams = fnode.params.length;
+    proto.isVararg = fnode.isVararg;
+    var childFs = new FuncState(fs, proto);
+    for (var i = 0; i < fnode.params.length; i++) childFs.declareLocal(fnode.params[i]);
+    compileStmts(fnode.body.stmts, childFs);
+    childFs.emit('MARK');
+    childFs.emit('RETURN');
+    resolveGotos(childFs);
+    var protoIdx = fs.proto.protos.length;
+    fs.proto.protos.push(proto);
+    fs.emit('CLOSURE', protoIdx, null, null, fnode.line);
+  }
+
+  function compileFunctionDecl(s, fs) {
+    compileFunctionExpr(s.func, fs);
+    // assign into target (Name or Index chain)
+    if (s.target.type === 'Name') {
+      var res = resolveVar(fs, s.target.name);
+      if (res.kind === 'local') fs.emit('SETLOCAL', res.slot);
+      else if (res.kind === 'upval') fs.emit('SETUPVAL', res.idx);
+      else fs.emit('SETGLOBAL', fs.proto.addConst(s.target.name));
+    } else {
+      // target is Index chain: obj.a.b.c = func  /  obj.a:m = func
+      // We already pushed the function value; now need obj + key beneath it.
+      // Simplest correct approach: stash func in a temp, then evaluate obj/key, then SETTABLE.
+      var tmp = fs.declareLocal('%tmp_fdecl_' + fs.here());
+      fs.emit('NEWLOCAL', tmp);
+      fs.emit('SETLOCAL', tmp);
+      compileExprSingle(s.target.obj, fs);
+      compileExprSingle(s.target.key, fs);
+      fs.emit('GETLOCAL', tmp);
+      fs.emit('SETTABLE');
+    }
+  }
+
+  function compileLocalFunctionStmt(s, fs) {
+    var slot = fs.declareLocal(s.name); // visible inside body for recursion
+    fs.emit('NEWLOCAL', slot);
+    compileFunctionExpr(s.func, fs);
+    fs.emit('SETLOCAL', slot);
+  }
+
+  function compileReturn(s, fs) {
+    pushExprListWithMark(s.exprs, fs);
+    fs.emit('RETURN', null, null, null, s.line);
+  }
+
+  // ---- control flow ----
+
+  function compileIf(s, fs) {
+    var endJumps = [];
+    for (var i = 0; i < s.clauses.length; i++) {
+      var clause = s.clauses[i];
+      compileExprSingle(clause.cond, fs);
+      var jFalse = fs.emit('JMPIFNOT', null, null, null, clause.cond.line);
+      compileBlock(clause.body, fs);
+      var jEnd = fs.emit('JMP');
+      endJumps.push(jEnd);
+      fs.patch(jFalse, fs.here());
+    }
+    if (s.elseBody) compileBlock(s.elseBody, fs);
+    endJumps.forEach(function (j) { fs.patch(j, fs.here()); });
+  }
+
+  function compileWhile(s, fs) {
+    var loopStart = fs.here();
+    compileExprSingle(s.cond, fs);
+    var jExit = fs.emit('JMPIFNOT');
+    fs.pushLoop();
+    compileBlock(s.body, fs);
+    var back = fs.emit('JMP'); fs.patch(back, loopStart);
+    fs.patch(jExit, fs.here());
+    fs.popLoopAndPatch(fs.here());
+  }
+
+  function compileRepeat(s, fs) {
+    var loopStart = fs.here();
+    fs.pushLoop();
+    fs.enterScope();
+    compileStmts(s.body.stmts, fs);
+    compileExprSingle(s.cond, fs); // until-cond can see body locals
+    fs.exitScope();
+    var jBack = fs.emit('JMPIFNOT'); fs.patch(jBack, loopStart);
+    fs.popLoopAndPatch(fs.here());
+  }
+
+  function compileNumericFor(s, fs) {
+    fs.enterScope();
+    var ctrl = fs.declareLocal('%ctrl'); fs.emit('NEWLOCAL', ctrl);
+    compileExprSingle(s.start, fs); fs.emit('SETLOCAL', ctrl);
+    var limit = fs.declareLocal('%limit'); fs.emit('NEWLOCAL', limit);
+    compileExprSingle(s.stop, fs); fs.emit('SETLOCAL', limit);
+    var step = fs.declareLocal('%step'); fs.emit('NEWLOCAL', step);
+    if (s.step) compileExprSingle(s.step, fs); else fs.emit('PUSHK', fs.proto.addConst(1));
+    fs.emit('SETLOCAL', step);
+    var ascending = fs.declareLocal('%ascending'); fs.emit('NEWLOCAL', ascending);
+    fs.emit('GETLOCAL', step); fs.emit('PUSHK', fs.proto.addConst(0)); fs.emit('BINOP', '>');
+    fs.emit('SETLOCAL', ascending);
+
+    var loopStart = fs.here();
+    fs.emit('GETLOCAL', ascending);
+    var jElse = fs.emit('JMPIFNOT');
+    fs.emit('GETLOCAL', ctrl); fs.emit('GETLOCAL', limit); fs.emit('BINOP', '<=');
+    var jAfter = fs.emit('JMP');
+    fs.patch(jElse, fs.here());
+    fs.emit('GETLOCAL', ctrl); fs.emit('GETLOCAL', limit); fs.emit('BINOP', '>=');
+    fs.patch(jAfter, fs.here());
+    var jExit = fs.emit('JMPIFNOT');
+
+    fs.pushLoop();
+    fs.enterScope();
+    var uvar = fs.declareLocal(s.varName);
+    fs.emit('NEWLOCAL', uvar);
+    fs.emit('GETLOCAL', ctrl);
+    fs.emit('SETLOCAL', uvar);
+    compileStmts(s.body.stmts, fs);
+    fs.exitScope();
+
+    fs.emit('GETLOCAL', ctrl); fs.emit('GETLOCAL', step); fs.emit('BINOP', '+'); fs.emit('SETLOCAL', ctrl);
+    var back = fs.emit('JMP'); fs.patch(back, loopStart);
+    fs.patch(jExit, fs.here());
+    fs.popLoopAndPatch(fs.here());
+    fs.exitScope();
+  }
+
+  function compileGenericFor(s, fs) {
+    fs.enterScope();
+    pushExprListWithMark(s.exprs, fs);
+    fs.emit('ADJUST', 3); // f, s, var (4th to-be-closed value not supported)
+    var vvar = fs.declareLocal('%gfor_var'); fs.emit('NEWLOCAL', vvar); fs.emit('SETLOCAL', vvar);
+    var sState = fs.declareLocal('%gfor_state'); fs.emit('NEWLOCAL', sState); fs.emit('SETLOCAL', sState);
+    var fIter = fs.declareLocal('%gfor_f'); fs.emit('NEWLOCAL', fIter); fs.emit('SETLOCAL', fIter);
+
+    var loopStart = fs.here();
+    fs.emit('GETLOCAL', fIter);
+    fs.emit('MARK');
+    fs.emit('GETLOCAL', sState);
+    fs.emit('GETLOCAL', vvar);
+    fs.emit('CALL', s.names.length);
+
+    var tmpSlots = [];
+    for (var k = s.names.length - 1; k >= 0; k--) {
+      var t = fs.declareLocal('%gfor_res_' + fs.here() + '_' + k);
+      fs.emit('NEWLOCAL', t);
+      fs.emit('SETLOCAL', t);
+      tmpSlots[k] = t;
+    }
+
+    fs.emit('GETLOCAL', tmpSlots[0]);
+    fs.emit('PUSHNIL');
+    fs.emit('BINOP', '==');
+    var jExit = fs.emit('JMPIF');
+
+    fs.emit('GETLOCAL', tmpSlots[0]); fs.emit('SETLOCAL', vvar);
+
+    fs.pushLoop();
+    fs.enterScope();
+    for (var n = 0; n < s.names.length; n++) {
+      var slot = fs.declareLocal(s.names[n]);
+      fs.emit('NEWLOCAL', slot);
+      fs.emit('GETLOCAL', tmpSlots[n]);
+      fs.emit('SETLOCAL', slot);
+    }
+    compileStmts(s.body.stmts, fs);
+    fs.exitScope();
+
+    var back = fs.emit('JMP'); fs.patch(back, loopStart);
+    fs.patch(jExit, fs.here());
+    fs.popLoopAndPatch(fs.here());
+    fs.exitScope();
+  }
+
+  function compile(ast) { return compileProgram(ast); }
+
+  global.CG = global.CG || {};
+  global.CG.Compiler = { compile: compile, CompileError: CompileError };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== optimizer.js ==== */
+/* optimizer.js
+ * Safe, in-place bytecode optimizations that never change instruction
+ * *count* (so no jump-address relocation is ever required here):
+ *   - constant folding: PUSHK a; PUSHK b; BINOP op  ->  PUSHK result; NOP; NOP
+ *     (only when both operands are literal numbers, or literal strings for '..')
+ * This intentionally does NOT do dead-code elimination or instruction
+ * removal -- see README "Compatibility & limitations" for why.
+ */
+(function (global) {
+  'use strict';
+
+  function foldableBinNumeric(op) {
+    return ['+', '-', '*', '/', '%', '^', '//'].indexOf(op) !== -1;
+  }
+
+  function evalConstBinop(op, a, b) {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '/': return a / b;
+      case '%': return a - Math.floor(a / b) * b;
+      case '^': return Math.pow(a, b);
+      case '//': return Math.floor(a / b);
+      case '..': return String(a) + String(b);
+      default: return undefined;
+    }
+  }
+
+  function optimizeProto(proto) {
+    var ins = proto.instructions;
+    for (var i = 0; i + 2 < ins.length; i++) {
+      var i0 = ins[i], i1 = ins[i + 1], i2 = ins[i + 2];
+      if (i0.op === 'PUSHK' && i1.op === 'PUSHK' && i2.op === 'BINOP') {
+        var c0 = proto.constants[i0.a], c1 = proto.constants[i1.a];
+        var canFold = false, result;
+        if (foldableBinNumeric(i2.a) && c0.type === 'number' && c1.type === 'number') {
+          // avoid division by zero surprises changing error behavior
+          if ((i2.a === '/' || i2.a === '%' || i2.a === '//') && c1.value === 0) {
+            canFold = false;
+          } else {
+            result = evalConstBinop(i2.a, c0.value, c1.value);
+            canFold = isFinite(result);
+          }
+        } else if (i2.a === '..' && (c0.type === 'string' || c0.type === 'number') && (c1.type === 'string' || c1.type === 'number')) {
+          result = evalConstBinop('..', c0.value, c1.value);
+          canFold = true;
+        }
+        if (canFold) {
+          var kidx = proto.addConst(result);
+          ins[i] = { op: 'PUSHK', a: kidx, line: i0.line };
+          ins[i + 1] = { op: 'NOP', line: i1.line };
+          ins[i + 2] = { op: 'NOP', line: i2.line };
+        }
+      }
+    }
+    proto.protos.forEach(optimizeProto);
+  }
+
+  global.CG = global.CG || {};
+  global.CG.Optimizer = { optimizeProto: optimizeProto };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== encoder.js ==== */
+/* encoder.js
+ * Build-time hardening pass, applied AFTER compile+optimize:
+ *   - random per-build opcode -> small-integer id shuffle
+ *   - optional string constant encryption (additive cipher, random key per string)
+ *   - optional junk instruction insertion at compiler-verified safe points,
+ *     with correct jump-address relocation
+ *   - integrity checksum over the final structure (safe float-only rolling hash,
+ *     see README for why a naive FNV-1a was deliberately avoided)
+ *   - serialization of the Proto tree into literal Lua source (a nested table)
+ */
+(function (global) {
+  'use strict';
+
+  var OPCODES = global.CG.IR.OPCODES;
+
+  function shuffleOpcodeIds(rng) {
+    var ids = OPCODES.map(function (_, i) { return i + 1; });
+    for (var i = ids.length - 1; i > 0; i--) {
+      var j = Math.floor(rng() * (i + 1));
+      var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+    }
+    var map = {};
+    OPCODES.forEach(function (name, i) { map[name] = ids[i]; });
+    return map;
+  }
+
+  function mulberry32(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---- junk insertion (operates on symbolic-opcode Proto tree, before shuffle) ----
+
+  function relocateJumps(instructions, atIndex, delta) {
+    for (var i = 0; i < instructions.length; i++) {
+      var ins = instructions[i];
+      if ((ins.op === 'JMP' || ins.op === 'JMPIF' || ins.op === 'JMPIFNOT') && ins.a >= atIndex) {
+        ins.a += delta;
+      }
+    }
+  }
+
+  function relocateSafePoints(proto, atIndex, delta) {
+    if (!proto.safePoints) return;
+    for (var i = 0; i < proto.safePoints.length; i++) {
+      if (proto.safePoints[i] >= atIndex) proto.safePoints[i] += delta;
+    }
+  }
+
+  function insertJunkIntoProto(proto, probability, rng) {
+    var points = (proto.safePoints || []).slice().sort(function (a, b) { return b - a; });
+    var seen = {};
+    points.forEach(function (pos) {
+      if (seen[pos]) return; seen[pos] = true;
+      if (rng() > probability) return;
+      var junk = randomJunkTemplate(proto, rng);
+      relocateJumps(proto.instructions, pos, junk.length);
+      relocateSafePoints(proto, pos, junk.length);
+      var args = [pos, 0].concat(junk);
+      Array.prototype.splice.apply(proto.instructions, args);
+    });
+    proto.protos.forEach(function (p) { insertJunkIntoProto(p, probability, rng); });
+  }
+
+  // ---- control-flow block flattening (real block reordering) ----
+  //
+  // 1. Compute basic-block leaders (block start addresses): address 0, every
+  //    jump target, and the instruction right after every branch/return.
+  // 2. Normalize every block so it ends in an EXPLICIT control transfer
+  //    (append a synthetic JMP to the original fallthrough target for any
+  //    block that used to rely on falling through physically).
+  // 3. Shuffle the physical order of all blocks except the entry block
+  //    (which must stay first, since VM_RUN always starts at address 0).
+  // 4. Relocate every JMP/JMPIF/JMPIFNOT target from old block-start
+  //    address to new block-start address.
+  //
+  // After this, the original if/while/for nesting structure has no
+  // physical trace left in the instruction array -- blocks are scattered
+  // and glued together purely by jump instructions.
+
+  function computeLeaders(instructions) {
+    var leaders = new Set([0]);
+    instructions.forEach(function (ins, i) {
+      if (ins.op === 'JMP' || ins.op === 'JMPIF' || ins.op === 'JMPIFNOT') {
+        leaders.add(ins.a);
+        if (i + 1 < instructions.length) leaders.add(i + 1);
+      } else if (ins.op === 'RETURN') {
+        if (i + 1 < instructions.length) leaders.add(i + 1);
+      }
+    });
+    return Array.from(leaders).sort(function (a, b) { return a - b; });
+  }
+
+  function splitIntoBlocks(instructions) {
+    var leaders = computeLeaders(instructions);
+    var blocks = [];
+    for (var i = 0; i < leaders.length; i++) {
+      var start = leaders[i];
+      var end = i + 1 < leaders.length ? leaders[i + 1] : instructions.length;
+      blocks.push({ oldStart: start, ins: instructions.slice(start, end) });
+    }
+    return blocks;
+  }
+
+  function normalizeBlockTerminators(blocks) {
+    for (var i = 0; i < blocks.length; i++) {
+      var blk = blocks[i];
+      var last = blk.ins[blk.ins.length - 1];
+      var hasExplicitExit = last && (last.op === 'JMP' || last.op === 'RETURN');
+      if (!hasExplicitExit) {
+        var fallthroughOld = i + 1 < blocks.length ? blocks[i + 1].oldStart : null;
+        if (fallthroughOld !== null) {
+          blk.ins = blk.ins.concat([{ op: 'JMP', a: fallthroughOld, synthetic: true }]);
+        }
+        // if there is no next block, this must be the final block, which our
+        // compiler always terminates with RETURN -- nothing to do.
+      }
+    }
+  }
+
+  function flattenProto(proto, rng) {
+    if (proto.instructions.length === 0) { proto.protos.forEach(function (p) { flattenProto(p, rng); }); return; }
+
+    var blocks = splitIntoBlocks(proto.instructions);
+    normalizeBlockTerminators(blocks);
+
+    var entry = blocks[0];
+    var rest = blocks.slice(1);
+    for (var i = rest.length - 1; i > 0; i--) {
+      var j = Math.floor(rng() * (i + 1));
+      var t = rest[i]; rest[i] = rest[j]; rest[j] = t;
+    }
+    var newOrder = [entry].concat(rest);
+
+    var addrMap = {}; // oldStart -> newStart
+    var newInstructions = [];
+    newOrder.forEach(function (blk) {
+      addrMap[blk.oldStart] = newInstructions.length;
+      newInstructions = newInstructions.concat(blk.ins);
+    });
+
+    newInstructions.forEach(function (ins) {
+      if (ins.op === 'JMP' || ins.op === 'JMPIF' || ins.op === 'JMPIFNOT') {
+        if (Object.prototype.hasOwnProperty.call(addrMap, ins.a)) ins.a = addrMap[ins.a];
+        // (targets always land exactly on a block start by construction of computeLeaders)
+      }
+    });
+
+    proto.instructions = newInstructions;
+    proto.protos.forEach(function (p) { flattenProto(p, rng); });
+  }
+
+  // ---- opaque predicates: dead branches guarded by an always-true check ----
+  // Doubly safe by construction: even if the "always true" comparison were
+  // somehow wrong, the dead branch is itself a balanced push/pop no-op, so
+  // execution reaching it changes nothing either way.
+
+  function insertOpaquePredicates(proto, probability, rng) {
+    var points = (proto.safePoints || []).slice().sort(function (a, b) { return b - a; });
+    var seen = {};
+    points.forEach(function (pos) {
+      if (seen[pos]) return; seen[pos] = true;
+      if (rng() > probability) return;
+      var kIdx = proto.addConst(1 + Math.floor(rng() * 9973));
+      var junkK = proto.addConst(1 + Math.floor(rng() * 500));
+      var block = [
+        { op: 'PUSHK', a: kIdx },
+        { op: 'PUSHK', a: kIdx },
+        { op: 'BINOP', a: '==' },
+        { op: 'JMPIF', a: null }, // patched below to point past the dead code
+        { op: 'PUSHK', a: junkK }, // dead code (harmless if ever reached)
+        { op: 'POP', a: 1 }
+      ];
+      block[3].a = pos + block.length;
+      relocateJumps(proto.instructions, pos, block.length);
+      relocateSafePoints(proto, pos, block.length);
+      var args = [pos, 0].concat(block);
+      Array.prototype.splice.apply(proto.instructions, args);
+    });
+    proto.protos.forEach(function (p) { insertOpaquePredicates(p, probability, rng); });
+  }
+
+  // ---- more varied junk (several harmless templates instead of one) ----
+
+  function randomJunkTemplate(proto, rng) {
+    var pick = Math.floor(rng() * 4);
+    var kA = proto.addConst(1 + Math.floor(rng() * 500));
+    var kB = proto.addConst(1 + Math.floor(rng() * 500));
+    if (pick === 0) {
+      var op1 = ['+', '-', '*'][Math.floor(rng() * 3)];
+      return [{ op: 'PUSHK', a: kA }, { op: 'PUSHK', a: kB }, { op: 'BINOP', a: op1 }, { op: 'POP', a: 1 }];
+    }
+    if (pick === 1) {
+      return [{ op: 'PUSHK', a: kA }, { op: 'UNOP', a: '-' }, { op: 'POP', a: 1 }];
+    }
+    if (pick === 2) {
+      return [{ op: 'NEWTABLE' }, { op: 'DUP' }, { op: 'PUSHK', a: kA }, { op: 'PUSHK', a: kB }, { op: 'SETTABLE' }, { op: 'POP', a: 1 }];
+    }
+    return [{ op: 'PUSHK', a: kA }, { op: 'PUSHK', a: kA }, { op: 'BINOP', a: '~=' }, { op: 'POP', a: 1 }];
+  }
+
+
+
+  function encodeStringsInProto(proto, rng) {
+    proto.constants.forEach(function (c) {
+      if (c.type === 'string') {
+        var key = 1 + Math.floor(rng() * 250);
+        var bytes = [];
+        for (var j = 0; j < c.value.length; j++) bytes.push(((c.value.charCodeAt(j) & 0xff) + key) % 256);
+        c.encoded = { key: key, bytes: bytes };
+      }
+    });
+    proto.protos.forEach(function (p) { encodeStringsInProto(p, rng); });
+  }
+
+  // ---- feature detection (which Lua syntax the runtime template must include) ----
+
+  var BITWISE_BINOPS = ['&', '|', '~', '<<', '>>', '//'];
+
+  function detectFeatures(proto, feat) {
+    feat = feat || { bitwise: false };
+    proto.instructions.forEach(function (ins) {
+      if (ins.op === 'BINOP' && BITWISE_BINOPS.indexOf(ins.a) !== -1) feat.bitwise = true;
+      if (ins.op === 'UNOP' && ins.a === '~') feat.bitwise = true;
+    });
+    proto.protos.forEach(function (p) { detectFeatures(p, feat); });
+    return feat;
+  }
+
+  // ---- integrity hash: pure +,*,% rolling hash kept well under 2^53 at all
+  // times (max operand ~1e9 * 33 ~= 3.3e10), so it is bit-identical whether
+  // evaluated as JS doubles or Lua floats/integers -- this sidesteps 32-bit
+  // FNV overflow behavior differing across Lua's number subtypes. See README.
+
+  var HASH_MOD = 1000000007;
+  function hashStep(h, x) { return (h * 33 + (x % HASH_MOD)) % HASH_MOD; }
+  function hashString(h, s) {
+    for (var i = 0; i < s.length; i++) h = hashStep(h, s.charCodeAt(i));
+    return h;
+  }
+  function hashNumber(h, n) {
+    return hashStep(h, Math.floor(Math.abs(n) * 1000) % HASH_MOD);
+  }
+
+  function computeHash(proto, opcodeMap, h) {
+    h = h === undefined ? 5381 : h;
+    proto.instructions.forEach(function (ins) {
+      h = hashStep(h, opcodeMap[ins.op] || 0);
+      if (typeof ins.a === 'number') h = hashNumber(h, ins.a);
+      else if (typeof ins.a === 'string') h = hashString(h, ins.a);
+    });
+    proto.constants.forEach(function (c) {
+      if (c.encoded) {
+        h = hashStep(h, c.encoded.key);
+        c.encoded.bytes.forEach(function (b) { h = hashStep(h, b); });
+      } else if (c.type === 'number') {
+        h = hashNumber(h, c.value);
+      } else if (c.type === 'string') {
+        h = hashString(h, c.value);
+      }
+    });
+    proto.protos.forEach(function (p) { h = computeHash(p, opcodeMap, h); });
+    return h;
+  }
+
+  // ---- Lua serialization ----
+
+  function luaStringLiteral(s) {
+    var out = '"';
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i], code = s.charCodeAt(i);
+      if (c === '"') out += '\\"';
+      else if (c === '\\') out += '\\\\';
+      else if (c === '\n') out += '\\n';
+      else if (code < 32 || code > 126) out += '\\' + code;
+      else out += c;
+    }
+    return out + '"';
+  }
+
+  function luaNumberLiteral(n) {
+    if (Object.is(n, -0)) return '-0.0';
+    if (!isFinite(n)) return n > 0 ? '(1/0)' : (n < 0 ? '(-1/0)' : '(0/0)');
+    return String(n);
+  }
+
+  function serializeConst(c) {
+    if (c.encoded) {
+      return '{' + c.encoded.key + ',{' + c.encoded.bytes.join(',') + '}}';
+    }
+    if (c.type === 'number') return luaNumberLiteral(c.value);
+    if (c.type === 'string') return luaStringLiteral(c.value);
+    return 'nil';
+  }
+
+  function serializeInstruction(ins, opcodeMap) {
+    var id = opcodeMap[ins.op];
+    var parts = [id];
+    if (ins.op === 'NEWLOCAL' || ins.op === 'GETLOCAL' || ins.op === 'SETLOCAL' ||
+        ins.op === 'GETUPVAL' || ins.op === 'SETUPVAL' ||
+        ins.op === 'PUSHK' || ins.op === 'GETGLOBAL' || ins.op === 'SETGLOBAL' ||
+        ins.op === 'CLOSURE') {
+      parts.push(ins.a + 1); // 0-based compiler slot/idx -> 1-based Lua index
+    } else if (ins.op === 'JMP' || ins.op === 'JMPIF' || ins.op === 'JMPIFNOT') {
+      parts.push(ins.a + 1); // instruction address -> 1-based
+    } else if (ins.op === 'BINOP' || ins.op === 'UNOP') {
+      parts.push(luaStringLiteral(ins.a));
+    } else if (ins.op === 'POP' || ins.op === 'CALL' || ins.op === 'ADJUST' || ins.op === 'APPENDALL') {
+      parts.push(ins.a === undefined || ins.a === null ? 0 : ins.a);
+    }
+    return '{' + parts.join(',') + '}';
+  }
+
+  function serializeProto(proto, opcodeMap, options) {
+    var insText = proto.instructions.map(function (ins) { return serializeInstruction(ins, opcodeMap); }).join(',');
+    var kText = serializeConstantPool(proto.constants, options);
+    var prText = proto.protos.map(function (p) { return serializeProto(p, opcodeMap, options); }).join(',');
+    var uvText = proto.upvalues.map(function (uv) {
+      if (uv.fromParentLocal !== undefined) return '{1,' + (uv.fromParentLocal + 1) + '}';
+      return '{2,' + (uv.fromParentUpval + 1) + '}';
+    }).join(',');
+    return '{np=' + proto.numParams + ',va=' + (proto.isVararg ? 'true' : 'false') +
+      ',ins={' + insText + '},k=' + kText + ',pr={' + prText + '},uv={' + uvText + '}}';
+  }
+
+  // "Tach metadata thanh nhieu vung": split the constant pool into 2-3
+  // chunks, each declared separately, then reassembled by a small IIFE at
+  // load time. Purely a data-layout transform (the merged result is
+  // byte-for-byte the same array PROTO.k would otherwise have been), so it
+  // cannot change program behavior -- only what a static read of the
+  // source looks like.
+  function serializeConstantPool(constants, options) {
+    var items = constants.map(serializeConst);
+    if (!options || !options.splitConstants || items.length < 4) {
+      return '{' + items.join(',') + '}';
+    }
+    var chunkCount = items.length >= 9 ? 3 : 2;
+    var chunks = [];
+    for (var c = 0; c < chunkCount; c++) chunks.push([]);
+    items.forEach(function (item, i) { chunks[i % chunkCount].push(item); });
+    var chunkVars = chunks.map(function (chunk, i) { return 'kc' + i; });
+    var decls = chunks.map(function (chunk, i) { return 'local ' + chunkVars[i] + '={' + chunk.join(',') + '}'; }).join(' ');
+    // interleave back in original order (i % chunkCount pattern), matching the split above
+    var rebuild = 'local r={} local idx={' + chunkVars.map(function () { return '1'; }).join(',') + '} ' +
+      'for i=1,' + items.length + ' do local c=((i-1)%' + chunkCount + ')+1 ' +
+      'r[i]=(c==1 and kc0 or (c==2 and kc1' + (chunkCount === 3 ? ' or kc2' : '') + '))[idx[c]] idx[c]=idx[c]+1 end return r';
+    return '(function() ' + decls + ' ' + rebuild + ' end)()';
+  }
+
+  function encode(rootProto, options) {
+    options = options || {};
+    var rng = mulberry32((options.seed >>> 0) || (Date.now() & 0xffffffff));
+
+    if (options.junk) insertJunkIntoProto(rootProto, options.junkProbability || 0.35, rng);
+    if (options.opaquePredicates) insertOpaquePredicates(rootProto, options.opaquePredicateProbability || 0.2, rng);
+    if (options.flatten) flattenProto(rootProto, rng);
+    if (options.encryptStrings) encodeStringsInProto(rootProto, rng);
+
+    var opcodeMap = shuffleOpcodeIds(rng);
+    var features = detectFeatures(rootProto);
+    var hash = options.integrityCheck ? computeHash(rootProto, opcodeMap) : null;
+    var luaData = serializeProto(rootProto, opcodeMap, { splitConstants: !!options.splitConstants });
+
+    return {
+      opcodeMap: opcodeMap,
+      features: features,
+      hash: hash,
+      luaData: luaData
+    };
+  }
+
+  global.CG = global.CG || {};
+  global.CG.Encoder = { encode: encode, mulberry32: mulberry32, HASH_MOD: HASH_MOD, hashStep: hashStep };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== vm.js ==== */
+/* vm.js
+ * Generates the Lua source of the VM runtime that will be embedded in the
+ * protected output file. This is a faithful hand-port of
+ * test_harness/refvm.js's instruction semantics, but instead of
+ * reimplementing Lua's own operators/table/call semantics, every
+ * instruction that touches a real Lua value (GETTABLE, SETTABLE, CALL,
+ * BINOP, UNOP, globals) performs the *actual* Lua operation -- so
+ * metatables, coroutines, pcall, and numeric coercion are inherited from
+ * whatever real Lua interpreter runs the output, not reimplemented.
+ *
+ * IMPORTANT: because no Lua interpreter is available in the build
+ * sandbox this project was created in, this file could not be executed
+ * against a real Lua VM. It was written as a careful, instruction-by-
+ * instruction mirror of refvm.js (which *was* validated, see
+ * test_harness/run.js and run_encoder.js) and reviewed by hand. Please
+ * test protected output yourself before depending on it -- see README.
+ */
+(function (global) {
+  'use strict';
+
+  function generateRuntime(opts) {
+    var op = opts.opcodeMap;
+    var feat = opts.features || { bitwise: false };
+    var strict = !!opts.strictIntegrity;
+    var hasHash = opts.hash !== null && opts.hash !== undefined;
+
+    var lines = [];
+    function L(s) { lines.push(s); }
+
+    L('local tunpack = table.unpack or unpack');
+    L('local function tpack(...) return { n = select("#", ...), ... } end');
+    L('');
+    L('local function DECSTR(e)');
+    L('  local key = e[1]; local bytes = e[2]');
+    L('  local out = {}');
+    L('  for i = 1, #bytes do out[i] = string.char((bytes[i] - key) % 256) end');
+    L('  return table.concat(out)');
+    L('end');
+    L('');
+
+    if (hasHash) {
+      L('local HMOD = ' + global.CG.Encoder.HASH_MOD);
+      L('local function HSTEP(h, x) return (h * 33 + (x % HMOD)) % HMOD end');
+      L('local function HSTR(h, s) for i = 1, #s do h = HSTEP(h, string.byte(s, i)) end return h end');
+      L('local function HNUM(h, n) return HSTEP(h, math.floor((n < 0 and -n or n) * 1000.0) % HMOD) end');
+      L('local function HASHPROTO(p, h)');
+      L('  h = h or 5381');
+      L('  local ins = p.ins');
+      L('  for i = 1, #ins do');
+      L('    local I = ins[i]');
+      L('    h = HSTEP(h, I[1] or 0)');
+      L('    local a = I[2]');
+      L('    if type(a) == "number" then h = HNUM(h, a)');
+      L('    elseif type(a) == "string" then h = HSTR(h, a) end');
+      L('  end');
+      L('  local k = p.k');
+      L('  for i = 1, #k do');
+      L('    local kv = k[i]');
+      L('    if type(kv) == "table" then');
+      L('      h = HSTEP(h, kv[1])');
+      L('      local bytes = kv[2]');
+      L('      for j = 1, #bytes do h = HSTEP(h, bytes[j]) end');
+      L('    elseif type(kv) == "number" then h = HNUM(h, kv)');
+      L('    elseif type(kv) == "string" then h = HSTR(h, kv) end');
+      L('  end');
+      L('  for i = 1, #p.pr do h = HASHPROTO(p.pr[i], h) end');
+      L('  return h');
+      L('end');
+      L('');
+    }
+
+    L('local VM_RUN');
+    L('VM_RUN = function(proto, upvals, ...)');
+    L('  local locals = {}');
+    L('  local np = proto.np');
+    L('  for i = 1, np do locals[i] = { (select(i, ...)) } end');
+    L('  local varargs, vaCount = nil, 0');
+    L('  if proto.va then');
+    L('    local total = select("#", ...)');
+    L('    vaCount = total - np');
+    L('    if vaCount > 0 then varargs = { select(np + 1, ...) } else varargs = {}; vaCount = 0 end');
+    L('  end');
+    L('  local stack = {}');
+    L('  local sp = 0');
+    L('  local mstack = {}');
+    L('  local msp = 0');
+    L('  local ins = proto.ins');
+    L('  local kst = proto.k');
+    L('  local ni = #ins');
+    L('  local ip = 1');
+    L('  while ip <= ni do');
+    L('    local I = ins[ip]');
+    L('    local op = I[1]');
+
+    function branch(name, body) {
+      L('    ' + (lines._first ? 'elseif' : 'if') + ' op == ' + op[name] + ' then');
+      lines._first = true;
+      body.split('\n').forEach(function (l) { if (l.trim()) L('      ' + l); });
+    }
+
+    branch('PUSHK', 'sp = sp + 1\nlocal kv = kst[I[2]]\nif type(kv) == "table" then stack[sp] = DECSTR(kv) else stack[sp] = kv end\nip = ip + 1');
+    branch('PUSHNIL', 'sp = sp + 1\nstack[sp] = nil\nip = ip + 1');
+    branch('PUSHTRUE', 'sp = sp + 1\nstack[sp] = true\nip = ip + 1');
+    branch('PUSHFALSE', 'sp = sp + 1\nstack[sp] = false\nip = ip + 1');
+    branch('NEWLOCAL', 'locals[I[2]] = {}\nip = ip + 1');
+    branch('GETLOCAL', 'sp = sp + 1\nstack[sp] = locals[I[2]][1]\nip = ip + 1');
+    branch('SETLOCAL', 'locals[I[2]][1] = stack[sp]\nstack[sp] = nil\nsp = sp - 1\nip = ip + 1');
+    branch('GETUPVAL', 'sp = sp + 1\nstack[sp] = upvals[I[2]][1]\nip = ip + 1');
+    branch('SETUPVAL', 'upvals[I[2]][1] = stack[sp]\nstack[sp] = nil\nsp = sp - 1\nip = ip + 1');
+    branch('GETGLOBAL', 'sp = sp + 1\nlocal kv = kst[I[2]]\nlocal name = (type(kv) == "table") and DECSTR(kv) or kv\nstack[sp] = _G[name]\nip = ip + 1');
+    branch('SETGLOBAL', 'local kv = kst[I[2]]\nlocal name = (type(kv) == "table") and DECSTR(kv) or kv\n_G[name] = stack[sp]\nstack[sp] = nil\nsp = sp - 1\nip = ip + 1');
+    branch('NEWTABLE', 'sp = sp + 1\nstack[sp] = {}\nip = ip + 1');
+    branch('GETTABLE', 'local key = stack[sp]\nlocal tbl = stack[sp - 1]\nstack[sp] = nil\nsp = sp - 1\nstack[sp] = tbl[key]\nip = ip + 1');
+    branch('SETTABLE', 'local val = stack[sp]\nlocal key = stack[sp - 1]\nlocal tbl = stack[sp - 2]\nstack[sp] = nil\nstack[sp - 1] = nil\nstack[sp - 2] = nil\nsp = sp - 3\ntbl[key] = val\nip = ip + 1');
+    branch('DUP', 'sp = sp + 1\nstack[sp] = stack[sp - 1]\nip = ip + 1');
+    branch('POP', 'for i = 1, I[2] do stack[sp] = nil; sp = sp - 1 end\nip = ip + 1');
+    branch('MARK', 'msp = msp + 1\nmstack[msp] = sp\nip = ip + 1');
+    branch('PUSHVARARG_ALL', 'for i = 1, vaCount do sp = sp + 1; stack[sp] = varargs[i] end\nip = ip + 1');
+    branch('PUSHVARARG1', 'sp = sp + 1\nstack[sp] = varargs and varargs[1] or nil\nip = ip + 1');
+
+    branch('CALL',
+      'local mark = mstack[msp]; msp = msp - 1\n' +
+      'local fn = stack[mark]\n' +
+      'local results\n' +
+      'if sp > mark then results = tpack(fn(tunpack(stack, mark + 1, sp))) else results = tpack(fn()) end\n' +
+      'for i = mark, sp do stack[i] = nil end\n' +
+      'sp = mark - 1\n' +
+      'local want = I[2]\n' +
+      'if want == -1 then\n' +
+      '  for i = 1, results.n do sp = sp + 1; stack[sp] = results[i] end\n' +
+      'elseif want and want > 0 then\n' +
+      '  for i = 1, want do sp = sp + 1; stack[sp] = results[i] end\n' +
+      'end\n' +
+      'ip = ip + 1');
+
+    branch('RETURN',
+      'local mark = mstack[msp]; msp = msp - 1\n' +
+      'if sp <= mark then return end\n' +
+      'return tunpack(stack, mark + 1, sp)');
+
+    branch('CLOSURE',
+      'local childProto = proto.pr[I[2]]\n' +
+      'local newUpvals = {}\n' +
+      'local uv = childProto.uv\n' +
+      'for i = 1, #uv do\n' +
+      '  local desc = uv[i]\n' +
+      '  if desc[1] == 1 then newUpvals[i] = locals[desc[2]] else newUpvals[i] = upvals[desc[2]] end\n' +
+      'end\n' +
+      'sp = sp + 1\n' +
+      'stack[sp] = function(...) return VM_RUN(childProto, newUpvals, ...) end\n' +
+      'ip = ip + 1');
+
+    branch('JMP', 'ip = I[2]');
+    branch('JMPIF', 'local c = stack[sp]; stack[sp] = nil; sp = sp - 1\nif c then ip = I[2] else ip = ip + 1 end');
+    branch('JMPIFNOT', 'local c = stack[sp]; stack[sp] = nil; sp = sp - 1\nif not c then ip = I[2] else ip = ip + 1 end');
+
+    var binopBody =
+      'local b = stack[sp]; local a = stack[sp - 1]\n' +
+      'stack[sp] = nil\nsp = sp - 1\n' +
+      'local o = I[2]\n' +
+      'local res\n' +
+      'if o == "+" then res = a + b\n' +
+      'elseif o == "-" then res = a - b\n' +
+      'elseif o == "*" then res = a * b\n' +
+      'elseif o == "/" then res = a / b\n' +
+      'elseif o == "%" then res = a % b\n' +
+      'elseif o == "^" then res = a ^ b\n' +
+      'elseif o == ".." then res = a .. b\n' +
+      'elseif o == "==" then res = (a == b)\n' +
+      'elseif o == "~=" then res = (a ~= b)\n' +
+      'elseif o == "<" then res = (a < b)\n' +
+      'elseif o == "<=" then res = (a <= b)\n' +
+      'elseif o == ">" then res = (a > b)\n' +
+      'elseif o == ">=" then res = (a >= b)\n';
+    if (feat.bitwise) {
+      binopBody +=
+        'elseif o == "//" then res = a // b\n' +
+        'elseif o == "&" then res = a & b\n' +
+        'elseif o == "|" then res = a | b\n' +
+        'elseif o == "~" then res = a ~ b\n' +
+        'elseif o == "<<" then res = a << b\n' +
+        'elseif o == ">>" then res = a >> b\n';
+    }
+    binopBody += 'end\nstack[sp] = res\nip = ip + 1';
+    branch('BINOP', binopBody);
+
+    var unopBody =
+      'local a = stack[sp]\n' +
+      'local o = I[2]\n' +
+      'local res\n' +
+      'if o == "-" then res = -a\n' +
+      'elseif o == "not" then res = not a\n' +
+      'elseif o == "#" then res = #a\n';
+    if (feat.bitwise) unopBody += 'elseif o == "~" then res = ~a\n';
+    unopBody += 'end\nstack[sp] = res\nip = ip + 1';
+    branch('UNOP', unopBody);
+
+    branch('APPENDALL',
+      'local mark = mstack[msp]; msp = msp - 1\n' +
+      'local tbl = stack[mark]\n' +
+      'local k = I[2]\n' +
+      'for i = mark + 1, sp do tbl[k] = stack[i]; stack[i] = nil; k = k + 1 end\n' +
+      'sp = mark');
+
+    branch('ADJUST',
+      'local mark = mstack[msp]; msp = msp - 1\n' +
+      'local have = sp - mark\n' +
+      'local want = I[2]\n' +
+      'if have >= want then\n' +
+      '  for i = mark + want + 1, sp do stack[i] = nil end\n' +
+      '  sp = mark + want\n' +
+      'else\n' +
+      '  for i = have + 1, want do sp = sp + 1; stack[sp] = nil end\n' +
+      'end\n' +
+      'ip = ip + 1');
+
+    branch('JUNK', 'ip = ip + 1');
+    branch('NOP', 'ip = ip + 1');
+
+    L('    else');
+    L('      error("CG Lua Protector: corrupted or unknown instruction")');
+    L('    end');
+    L('  end');
+    L('  return');
+    L('end');
+    L('');
+
+    return lines.join('\n');
+  }
+
+  global.CG = global.CG || {};
+  global.CG.VM = { generateRuntime: generateRuntime };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== obfuscator.js ==== */
+/* obfuscator.js
+ * Orchestrates the full pipeline and exposes CG.Obfuscator.protect(src, level)
+ * level: 'light' | 'medium' | 'strong'
+ * Returns { code, stats, warnings }
+ */
+(function (global) {
+  'use strict';
+
+  var LEVELS = {
+    light: {
+      junk: false, junkProbability: 0,
+      opaquePredicates: false, opaquePredicateProbability: 0,
+      flatten: false,
+      encryptStrings: false, integrityCheck: false, splitConstants: false
+    },
+    medium: {
+      junk: true, junkProbability: 0.3,
+      opaquePredicates: false, opaquePredicateProbability: 0,
+      flatten: false,
+      encryptStrings: true, integrityCheck: true, splitConstants: false
+    },
+    strong: {
+      junk: true, junkProbability: 0.6,
+      opaquePredicates: true, opaquePredicateProbability: 0.35,
+      flatten: true,
+      encryptStrings: true, integrityCheck: true, splitConstants: true
+    }
+  };
+
+  function countInstructions(proto) {
+    var n = proto.instructions.length;
+    proto.protos.forEach(function (p) { n += countInstructions(p); });
+    return n;
+  }
+  function countConstants(proto) {
+    var n = proto.constants.length;
+    proto.protos.forEach(function (p) { n += countConstants(p); });
+    return n;
+  }
+  function countProtos(proto) {
+    var n = 1;
+    proto.protos.forEach(function (p) { n += countProtos(p); });
+    return n;
+  }
+
+  function protect(source, level, extra) {
+    extra = extra || {};
+    var levelOpts = LEVELS[level] || LEVELS.medium;
+    var warnings = [];
+
+    var tokens = global.CG.Lexer.tokenize(source);
+    var ast = global.CG.Parser.parse(tokens);
+    var proto = global.CG.Compiler.compile(ast);
+
+    global.CG.Optimizer.optimizeProto(proto);
+
+    var instructionsBefore = countInstructions(proto);
+    var constantsBefore = countConstants(proto);
+
+    var encOpts = {
+      junk: levelOpts.junk,
+      junkProbability: levelOpts.junkProbability,
+      opaquePredicates: levelOpts.opaquePredicates,
+      opaquePredicateProbability: levelOpts.opaquePredicateProbability,
+      flatten: levelOpts.flatten,
+      encryptStrings: levelOpts.encryptStrings,
+      integrityCheck: levelOpts.integrityCheck,
+      splitConstants: levelOpts.splitConstants,
+      seed: extra.seed || (Date.now() ^ Math.floor(Math.random() * 0xffffffff))
+    };
+    var encoded = global.CG.Encoder.encode(proto, encOpts);
+
+    if (encoded.features.bitwise) {
+      warnings.push('Mã nguồn dùng toán tử bitwise hoặc // (floor division) — output chỉ chạy được trên Lua 5.3 trở lên.');
+    }
+
+    var runtime = global.CG.VM.generateRuntime({
+      opcodeMap: encoded.opcodeMap,
+      features: encoded.features,
+      hash: encoded.hash,
+      strictIntegrity: !!extra.strictIntegrity
+    });
+
+    var out = [];
+    out.push('-- Protected by CG Lua Protector (client-side, self-contained).');
+    out.push('-- Level: ' + level + (encoded.features.bitwise ? ' | requires Lua 5.3+' : ' | Lua 5.1-5.4 compatible'));
+    out.push('');
+    out.push(runtime);
+    out.push('local PROTO = ' + encoded.luaData);
+    out.push('');
+
+    if (levelOpts.integrityCheck && encoded.hash !== null) {
+      out.push('local __h = HASHPROTO(PROTO)');
+      out.push('if __h ~= ' + encoded.hash + ' then');
+      if (extra.strictIntegrity) {
+        out.push('  error("CG Lua Protector: integrity check failed - data was modified")');
+      } else {
+        out.push('  if io and io.stderr then io.stderr:write("[CG Lua Protector] canh bao: kiem tra toan ven khong khop (tiep tuc chay)\\n") end');
+      }
+      out.push('end');
+      out.push('');
+    }
+
+    out.push('return VM_RUN(PROTO, {}, ...)');
+
+    var finalCode = out.join('\n');
+
+    var stats = {
+      instructionsBefore: instructionsBefore,
+      instructionsAfter: countInstructions(proto),
+      constantsBefore: constantsBefore,
+      constantsAfter: countConstants(proto),
+      protoCount: countProtos(proto),
+      sourceBytes: byteLength(source),
+      outputBytes: byteLength(finalCode),
+      opcodeSeed: encOpts.seed
+    };
+
+    return { code: finalCode, stats: stats, warnings: warnings };
+  }
+
+  function byteLength(str) {
+    var n = 0;
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      n += c < 0x80 ? 1 : (c < 0x800 ? 2 : 3);
+    }
+    return n;
+  }
+
+  global.CG = global.CG || {};
+  global.CG.Obfuscator = { protect: protect, LEVELS: LEVELS };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== github.js ==== */
+/* github.js
+ * Optional GitHub Gist export. The user supplies their OWN token (never
+ * stored in this source, never sent anywhere except directly to
+ * api.github.com from the user's own browser). No token is hard-coded.
+ *
+ * IMPORTANT (read before using):
+ * - A token typed here lives only in this page's memory for this session
+ *   (a JS variable) -- it is not persisted to localStorage/cookies by
+ *   this module, and is cleared when the page is closed/reloaded.
+ * - The token needs the "gist" scope ONLY. Do not use a token with wider
+ *   permissions (repo/admin/etc). Treat any token with write access as a
+ *   secret: anyone with it can create/modify gists as you.
+ * - Calling the GitHub API directly from a browser works for the Gist
+ *   endpoints (they support CORS), so no backend is required for this
+ *   specific feature. If you later want to hit endpoints that do NOT
+ *   support CORS from the browser, you'll need your own small
+ *   backend/serverless proxy that holds the token server-side instead --
+ *   do not try to work around CORS by weakening browser security
+ *   settings.
+ */
+(function (global) {
+  'use strict';
+
+  var sessionToken = null;
+
+  function setToken(t) { sessionToken = t && t.trim() ? t.trim() : null; }
+  function hasToken() { return !!sessionToken; }
+  function clearToken() { sessionToken = null; }
+
+  function createGist(filename, content, opts) {
+    opts = opts || {};
+    if (!sessionToken) return Promise.reject(new Error('Chưa nhập GitHub token (cần quyền "gist").'));
+    var body = {
+      description: opts.description || 'CG Lua Protector output',
+      public: !!opts.isPublic,
+      files: {}
+    };
+    body.files[filename] = { content: content };
+
+    return fetch('https://api.github.com/gists', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'token ' + sessionToken,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error('GitHub API tra ve loi ' + res.status + ': ' + t.slice(0, 300));
+        });
+      }
+      return res.json();
+    }).then(function (json) {
+      return { url: json.html_url, id: json.id };
+    });
+  }
+
+  global.CG = global.CG || {};
+  global.CG.GitHub = {
+    setToken: setToken,
+    hasToken: hasToken,
+    clearToken: clearToken,
+    createGist: createGist
+  };
+
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ==== app.js ==== */
+/* app.js -- wires the DOM to the CG.* pipeline modules. */
+(function () {
+  'use strict';
+
+  var els = {};
+  function $(id) { return document.getElementById(id); }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    els.source = $('source');
+    els.upload = $('upload');
+    els.fileName = $('fileName');
+    els.level = document.querySelectorAll('input[name="level"]');
+    els.strict = $('strictIntegrity');
+    els.protectBtn = $('protectBtn');
+    els.downloadBtn = $('downloadBtn');
+    els.copyBtn = $('copyBtn');
+    els.output = $('output');
+    els.log = $('log');
+    els.warnings = $('warnings');
+    els.statsBox = $('statsBox');
+    els.szBefore = $('szBefore');
+    els.szAfter = $('szAfter');
+    els.insBefore = $('insBefore');
+    els.insAfter = $('insAfter');
+    els.constCount = $('constCount');
+    els.protoCount = $('protoCount');
+    els.ratio = $('ratio');
+
+    els.gistToken = $('gistToken');
+    els.gistDesc = $('gistDesc');
+    els.gistPublic = $('gistPublic');
+    els.gistBtn = $('gistBtn');
+    els.gistResult = $('gistResult');
+
+    var lastProtected = null;
+    var lastFilename = 'script';
+
+    els.upload.addEventListener('change', function (e) {
+      var f = e.target.files[0];
+      if (!f) return;
+      lastFilename = f.name.replace(/\.lua$/i, '');
+      els.fileName.textContent = f.name;
+      var reader = new FileReader();
+      reader.onload = function () { els.source.value = reader.result; };
+      reader.readAsText(f);
+    });
+
+    function log(msg, cls) {
+      var line = document.createElement('div');
+      line.className = 'log-line' + (cls ? ' ' + cls : '');
+      line.textContent = msg;
+      els.log.appendChild(line);
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+    function clearLog() { els.log.innerHTML = ''; }
+
+    function selectedLevel() {
+      for (var i = 0; i < els.level.length; i++) if (els.level[i].checked) return els.level[i].value;
+      return 'medium';
+    }
+
+    els.protectBtn.addEventListener('click', function () {
+      var src = els.source.value;
+      if (!src.trim()) { log('Chưa có mã Lua nào để bảo vệ.', 'err'); return; }
+      clearLog();
+      els.warnings.innerHTML = '';
+      els.output.value = '';
+      els.downloadBtn.disabled = true;
+      els.copyBtn.disabled = true;
+      els.statsBox.style.display = 'none';
+
+      var t0 = performance.now();
+      try {
+        log('Đang lex mã nguồn...');
+        var toks = CG.Lexer.tokenize(src);
+        log('  -> ' + toks.length + ' token.', 'ok');
+
+        log('Đang parse thành AST...');
+        var ast = CG.Parser.parse(toks);
+        log('  -> ' + ast.stmts.length + ' statement ở top-level.', 'ok');
+
+        log('Đang biên dịch sang bytecode (custom stack-based VM)...');
+        var proto = CG.Compiler.compile(ast);
+        log('  -> compile xong.', 'ok');
+
+        log('Đang tối ưu (constant folding an toàn)...');
+        CG.Optimizer.optimizeProto(proto);
+        log('  -> xong.', 'ok');
+
+        var level = selectedLevel();
+        log('Đang encode (mức bảo vệ: ' + level.toUpperCase() + ')...');
+        var strict = els.strict.checked;
+        var result = CG.Obfuscator.protect(src, level, { strictIntegrity: strict });
+        log('  -> encode xong. seed build = ' + result.stats.opcodeSeed, 'ok');
+
+        var t1 = performance.now();
+        log('Hoàn tất trong ' + (t1 - t0).toFixed(1) + ' ms.', 'ok');
+
+        result.warnings.forEach(function (w) {
+          var d = document.createElement('div');
+          d.className = 'warn-pill';
+          d.textContent = '⚠ ' + w;
+          els.warnings.appendChild(d);
+        });
+
+        els.output.value = result.code;
+        lastProtected = result.code;
+        els.downloadBtn.disabled = false;
+        els.copyBtn.disabled = false;
+
+        els.szBefore.textContent = result.stats.sourceBytes + ' B';
+        els.szAfter.textContent = result.stats.outputBytes + ' B';
+        els.insBefore.textContent = result.stats.instructionsBefore;
+        els.insAfter.textContent = result.stats.instructionsAfter;
+        els.constCount.textContent = result.stats.constantsAfter;
+        els.protoCount.textContent = result.stats.protoCount;
+        els.ratio.textContent = (result.stats.outputBytes / Math.max(1, result.stats.sourceBytes) * 100).toFixed(0) + '%';
+        els.statsBox.style.display = 'grid';
+
+      } catch (e) {
+        log('LỖI: ' + (e && e.message ? e.message : String(e)), 'err');
+        if (e && e.name) log('(' + e.name + ')', 'err');
+      }
+    });
+
+    els.downloadBtn.addEventListener('click', function () {
+      if (!lastProtected) return;
+      var blob = new Blob([lastProtected], { type: 'text/plain' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = lastFilename + '_protected.lua';
+      a.click();
+    });
+
+    els.copyBtn.addEventListener('click', function () {
+      if (!lastProtected) return;
+      navigator.clipboard.writeText(lastProtected);
+      var old = els.copyBtn.textContent;
+      els.copyBtn.textContent = 'Đã copy ✓';
+      setTimeout(function () { els.copyBtn.textContent = old; }, 1200);
+    });
+
+    els.gistBtn.addEventListener('click', function () {
+      var token = els.gistToken.value;
+      if (!token.trim()) { els.gistResult.textContent = 'Nhập GitHub token (quyền "gist") trước đã.'; return; }
+      if (!lastProtected) { els.gistResult.textContent = 'Chưa có output nào để export.'; return; }
+      CG.GitHub.setToken(token);
+      els.gistResult.textContent = 'Đang tạo gist...';
+      CG.GitHub.createGist(lastFilename + '_protected.lua', lastProtected, {
+        description: els.gistDesc.value || 'CG Lua Protector output',
+        isPublic: els.gistPublic.checked
+      }).then(function (r) {
+        els.gistResult.innerHTML = 'Đã tạo: <a href="' + r.url + '" target="_blank" rel="noopener">' + r.url + '</a>';
+      }).catch(function (e) {
+        els.gistResult.textContent = 'Lỗi: ' + e.message;
+      });
+    });
+  });
+})();
+
+</script>
+</body>
+</html>
