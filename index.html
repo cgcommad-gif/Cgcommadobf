@@ -98,19 +98,27 @@ body{ margin:0; background: radial-gradient(ellipse at top,#1a1410 0%,#0e0b0a 55
 // ============================================================
 // CG VietDub — ban gop 1 file HTML, chay hoan toan trong trinh
 // duyet bang ffmpeg.wasm (khong can Node.js backend).
+// STT / Dich / TTS deu dung GOOGLE GEMINI API.
 //
 // GIOI HAN THAT SU (khong gia vo la lam duoc het):
 // - Video/audio duoc xu ly bang ffmpeg.wasm (WebAssembly) chay
 //   ngay trong tab trinh duyet. Phu hop voi clip NGAN (vai phut,
 //   duoi ~150-200MB). Clip dai/nang co the cham hoac het bo nho,
 //   vi trinh duyet gioi han RAM cho WebAssembly.
-// - STT / Dich / TTS goi THANG toi API cua OpenAI tu trinh duyet
-//   bang API key ban nhap o tab Settings. Key CHI luu trong bo
-//   nho JS (bien "state.apiKey"), KHONG ghi vao localStorage,
-//   KHONG gui di dau khac ngoai OpenAI — nhung vi day la ung dung
-//   client-side, key se hien trong DevTools/Network của chinh may
-//   ban. Neu can bao mat key that su, hay dung ban backend (co
-//   the tao rieng) de giu key phia server.
+// - STT / Dich / TTS goi THANG toi Gemini API (generativelanguage
+//   .googleapis.com) tu trinh duyet bang API key ban nhap o tab
+//   Settings. Key CHI luu trong bo nho JS (bien "state.apiKey"),
+//   KHONG ghi vao localStorage — nhung vi day la ung dung
+//   client-side, key se hien trong DevTools/Network cua chinh may
+//   ban. Neu can bao mat key that su, hay dung ban backend (Node.js)
+//   de giu key phia server.
+// - Gemini KHONG phai la mo hinh STT chuyen dung (nhu Whisper): no
+//   doc audio va TU SUY RA timestamp cho tung cau qua prompt. Do
+//   chinh xac cua thoi gian bat dau/ket thuc co the kem hon Whisper
+//   — nen ra soat lai transcript truoc khi dich/long tieng.
+// - Gioi han request inline cua Gemini la 20MB (audio + prompt).
+//   Voi audio dai hon, can dung Files API (khong lam trong ban
+//   client-side thuan nay) hoac cat video ngan lai.
 // - Phai mo file nay qua may chu tinh (http/https), KHONG mo truc
 //   tiep bang duong dan file:// — vi trinh duyet chan ES module
 //   va fetch tu CDN khi chay o file://. Vi du:
@@ -142,6 +150,8 @@ const state = {
   ffmpeg: null,
   ffmpegReady: false,
   apiKey: "",
+  textModel: "gemini-2.5-flash",
+  ttsModel: "gemini-2.5-flash-preview-tts",
   file: null,
   videoUrl: null,
   inputName: null, // ten file da ghi vao FS ao cua ffmpeg
@@ -164,7 +174,7 @@ const state = {
     outline: "#000000",
     background: "on",
   },
-  voiceSettings: { voice: "female", speed: 1.0, mixVolume: 0.8 },
+  voiceSettings: { voice: "female", voiceNameFemale: "Kore", voiceNameMale: "Puck", speed: 1.0, mixVolume: 0.8 },
   showVietSub: true,
   showDub: false,
   activeTab: "transcript",
@@ -328,68 +338,132 @@ async function extractAudio() {
 function requireApiKey() {
   if (!state.apiKey || state.apiKey.trim().length < 10) {
     throw new Error(
-      "Chua nhap OpenAI API key. Mo tab Settings va dan API key cua ban (chi luu tam trong bo nho trinh duyet, mat khi tai lai trang)."
+      "Chua nhap Gemini API key. Mo tab Settings va dan API key cua ban (chi luu tam trong bo nho trinh duyet, mat khi tai lai trang). Lay key tai aistudio.google.com/apikey."
     );
   }
 }
 
+function geminiUrl(model) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(state.apiKey)}`;
+}
+
+async function blobToBase64(blob) {
+  const buf = await blob.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buf);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function callGemini(model, body) {
+  const res = await fetch(geminiUrl(model), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Gemini API loi (${res.status}): ${await res.text()}`);
+  return res.json();
+}
+
+// ---- STT: Gemini doc truc tiep file audio va TU SUY RA cau + timestamp
+// qua prompt + structured output (responseSchema), khong phai model STT
+// chuyen dung nhu Whisper nen do chinh xac ve thoi gian co the kem hon.
 async function transcribeAudio(blob) {
   requireApiKey();
-  const form = new FormData();
-  form.append("file", blob, "audio.wav");
-  form.append("model", "whisper-1");
-  form.append("response_format", "verbose_json");
-  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${state.apiKey}` },
-    body: form,
+  const base64 = await blobToBase64(blob);
+  const prompt =
+    "Hay nghe doan audio nay va tach thanh cac cau/cum tu ngan tu nhien (giong cach chia dong phu de). " +
+    "Voi moi cau, tra ve thoi gian bat dau (start) va ket thuc (end) tinh bang GIAY (so thap phan, tinh tu dau file audio), " +
+    "va noi dung loi thoai goc (khong dich). Chi tra ve JSON, khong giai thich them.";
+  const data = await callGemini(state.textModel, {
+    contents: [
+      {
+        parts: [
+          { inlineData: { mimeType: "audio/wav", data: base64 } },
+          { text: prompt },
+        ],
+      },
+    ],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            start: { type: "NUMBER" },
+            end: { type: "NUMBER" },
+            text: { type: "STRING" },
+          },
+          required: ["start", "end", "text"],
+        },
+      },
+    },
   });
-  if (!res.ok) throw new Error(`OpenAI STT loi (${res.status}): ${await res.text()}`);
-  const data = await res.json();
-  const segments = data.segments || [];
-  return segments.map((s, idx) => ({ id: idx + 1, start: s.start, end: s.end, text: s.text.trim() }));
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new Error("Gemini tra ve JSON khong hop le cho transcript: " + e.message);
+  }
+  return parsed.map((s, idx) => ({ id: idx + 1, start: Number(s.start) || 0, end: Number(s.end) || 0, text: String(s.text || "").trim() }));
 }
 
 async function translateSegments(segments) {
   requireApiKey();
   const numbered = segments.map((s, i) => `${i + 1}. ${s.text}`).join("\n");
-  const prompt = `Ban la bien dich vien chuyen nghiep. Hay dich cac cau sau tu ngon ngu goc sang tieng Viet tu nhien, giu dung van phong hoi thoai. TRA VE DUNG DINH DANG: moi dong la "so_thu_tu. ban dich", khong them giai thich, khong gop hoac tach dong.\n\n${numbered}`;
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${state.apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+  const prompt =
+    `Ban la bien dich vien chuyen nghiep. Hay dich cac cau sau tu ngon ngu goc sang tieng Viet tu nhien, giu dung van phong hoi thoai. ` +
+    `Tra ve mot mang JSON cac chuoi (string), dung THU TU va SO LUONG voi danh sach goc, moi phan tu la ban dich cua 1 cau tuong ung, khong danh so, khong giai thich them.\n\n${numbered}`;
+  const data = await callGemini(state.textModel, {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: { type: "ARRAY", items: { type: "STRING" } },
       temperature: 0.3,
-    }),
+    },
   });
-  if (!res.ok) throw new Error(`OpenAI Translate loi (${res.status}): ${await res.text()}`);
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "";
-  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
-  return segments.map((seg, idx) => {
-    const line = lines[idx] || "";
-    const cleaned = line.replace(/^\d+\.\s*/, "").trim();
-    return { id: seg.id, start: seg.start, end: seg.end, text: cleaned || seg.text };
-  });
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+  let lines;
+  try {
+    lines = JSON.parse(raw);
+  } catch (e) {
+    throw new Error("Gemini tra ve JSON khong hop le cho ban dich: " + e.message);
+  }
+  return segments.map((seg, idx) => ({
+    id: seg.id,
+    start: seg.start,
+    end: seg.end,
+    text: (lines[idx] || "").toString().trim() || seg.text,
+  }));
 }
 
-async function synthesizeSegment(text, gender, speed) {
+// ---- TTS: Gemini tra ve audio PCM tho (16-bit, mono), khong phai file
+// nen. Ta ghi thang PCM vao FS cua ffmpeg va khai bao dinh dang (-f s16le)
+// khi doc lai, khong can tu dung WAV header.
+async function synthesizeSegment(text, gender) {
   requireApiKey();
-  const voice = gender === "male" ? "onyx" : "nova";
-  const res = await fetch("https://api.openai.com/v1/audio/speech", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${state.apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "tts-1",
-      voice,
-      input: text,
-      speed: Math.min(4.0, Math.max(0.25, speed)),
-      response_format: "mp3",
-    }),
+  const voiceName = gender === "male" ? state.voiceSettings.voiceNameMale : state.voiceSettings.voiceNameFemale;
+  const data = await callGemini(state.ttsModel, {
+    contents: [{ parts: [{ text }] }],
+    generationConfig: {
+      responseModalities: ["AUDIO"],
+      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
+    },
   });
-  if (!res.ok) throw new Error(`OpenAI TTS loi (${res.status}): ${await res.text()}`);
-  return new Uint8Array(await res.arrayBuffer());
+  const part = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+  if (!part?.data) throw new Error("Gemini TTS khong tra ve audio. Kiem tra ten model/voice trong Settings.");
+  const mimeType = part.mimeType || "";
+  const rateMatch = mimeType.match(/rate=(\d+)/);
+  const sampleRate = rateMatch ? Number(rateMatch[1]) : 24000;
+  const binary = atob(part.data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return { bytes, sampleRate };
 }
 
 async function generateVoiceTrack() {
@@ -397,18 +471,21 @@ async function generateVoiceTrack() {
   const segFiles = [];
   for (const seg of state.translation) {
     if (!seg.text.trim()) continue;
-    const bytes = await synthesizeSegment(seg.text, state.voiceSettings.voice, state.voiceSettings.speed);
-    const fname = `tts_${seg.id}.mp3`;
+    const { bytes, sampleRate } = await synthesizeSegment(seg.text, state.voiceSettings.voice);
+    const fname = `tts_${seg.id}.pcm`;
     await ffmpeg.writeFile(fname, bytes);
-    segFiles.push({ start: seg.start, fname });
+    segFiles.push({ start: seg.start, fname, sampleRate });
   }
   if (segFiles.length === 0) throw new Error("Khong co cau nao de tao giong doc.");
 
+  const speed = Math.min(2.0, Math.max(0.5, state.voiceSettings.speed));
   const args = [];
-  segFiles.forEach((s) => args.push("-i", s.fname));
+  segFiles.forEach((s) => {
+    args.push("-f", "s16le", "-ar", String(s.sampleRate), "-ac", "1", "-i", s.fname);
+  });
   const delayFilters = segFiles.map((s, i) => {
     const ms = Math.max(0, Math.round(s.start * 1000));
-    return `[${i}:a]adelay=${ms}|${ms}[d${i}]`;
+    return `[${i}:a]atempo=${speed},adelay=${ms}|${ms}[d${i}]`;
   });
   const mixInputs = segFiles.map((_, i) => `[d${i}]`).join("");
   const filterComplex = [
@@ -475,7 +552,7 @@ async function renderFinal(mode) {
 
   args.push("-filter_complex", filterComplex.replace(/;$/, ""));
   args.push(...maps);
-  args.push("-c:v", videoChain ? "libx264" : "copy", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "output.mp4");
+  args.push("-c:v", videoChain ? "libx264" : "copy", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", "output.mp4");
 
   log("Lenh FFmpeg: " + args.join(" "));
   await ffmpeg.exec(args);
@@ -495,7 +572,7 @@ async function startProcessing() {
     log("Dang tach audio khoi video...");
     const audioBlob = await extractAudio();
     setStatus("transcribing", 30);
-    log("Dang nhan dien loi thoai (Whisper)...");
+    log("Dang nhan dien loi thoai (Gemini)...");
     state.transcript = await transcribeAudio(audioBlob);
     setStatus("translating", 45);
     renderTab();
@@ -614,7 +691,7 @@ function renderApp() {
     "div",
     { class: "notice" },
     "⚠ Bản gộp 1 file HTML: xử lý video bằng FFmpeg WebAssembly ngay trong trình duyệt (không có backend). " +
-      "Nên dùng cho clip ngắn. STT/Dịch/TTS gọi trực tiếp OpenAI bằng API key bạn nhập ở tab Settings — key chỉ nằm trong bộ nhớ tạm, mất khi tải lại trang. " +
+      "Nên dùng cho clip ngắn. STT/Dịch/TTS gọi trực tiếp Gemini API bằng API key bạn nhập ở tab Settings — key chỉ nằm trong bộ nhớ tạm, mất khi tải lại trang. " +
       "Phải mở trang qua http/https (vd: npx serve .), không mở bằng file://."
   );
   root.appendChild(notice);
@@ -937,25 +1014,45 @@ function renderVoicePanel() {
   body.appendChild(mixLabel);
 
   panel.appendChild(body);
-  panel.appendChild(el("p", { class: "panel-footnote" }, "Giọng đọc lấy từ giọng có sẵn của OpenAI TTS — không nhân bản giọng người thật."));
+  panel.appendChild(el("p", { class: "panel-footnote" }, "Giọng đọc lấy từ giọng có sẵn của Gemini TTS — không nhân bản giọng người thật. Tốc độ đọc được áp dụng bằng bộ lọc audio (atempo) sau khi tạo giọng, vì Gemini TTS không có tham số tốc độ trực tiếp."));
   return panel;
 }
 
 function renderSettingsPanel() {
   const panel = el("div", { class: "panel" });
-  panel.appendChild(el("div", { class: "panel-header" }, [el("h3", {}, "Settings — OpenAI API Key")]));
-  const body = el("div", { class: "panel-body" });
-  const keyInput = el("input", { type: "password", placeholder: "sk-...", value: state.apiKey });
+  panel.appendChild(el("div", { class: "panel-header" }, [el("h3", {}, "Settings — Gemini API Key")]));
+  const body = el("div", { class: "panel-body form-grid" });
+
+  const keyInput = el("input", { type: "password", placeholder: "AIza...", value: state.apiKey });
   keyInput.addEventListener("input", (e) => (state.apiKey = e.target.value.trim()));
-  body.appendChild(el("label", {}, ["OpenAI API Key (chỉ lưu tạm trong bộ nhớ trình duyệt)", keyInput]));
+  body.appendChild(el("label", { style: "grid-column:1/-1" }, ["Gemini API Key (chỉ lưu tạm trong bộ nhớ trình duyệt)", keyInput]));
+
+  const textModelInput = el("input", { type: "text", value: state.textModel });
+  textModelInput.addEventListener("input", (e) => (state.textModel = e.target.value.trim()));
+  body.appendChild(el("label", {}, ["Model cho STT + Dịch (text/audio)", textModelInput]));
+
+  const ttsModelInput = el("input", { type: "text", value: state.ttsModel });
+  ttsModelInput.addEventListener("input", (e) => (state.ttsModel = e.target.value.trim()));
+  body.appendChild(el("label", {}, ["Model TTS (giọng nói)", ttsModelInput]));
+
+  const voiceFemaleInput = el("input", { type: "text", value: state.voiceSettings.voiceNameFemale });
+  voiceFemaleInput.addEventListener("input", (e) => (state.voiceSettings.voiceNameFemale = e.target.value.trim()));
+  body.appendChild(el("label", {}, ["Tên giọng Nữ (Gemini voice)", voiceFemaleInput]));
+
+  const voiceMaleInput = el("input", { type: "text", value: state.voiceSettings.voiceNameMale });
+  voiceMaleInput.addEventListener("input", (e) => (state.voiceSettings.voiceNameMale = e.target.value.trim()));
+  body.appendChild(el("label", {}, ["Tên giọng Nam (Gemini voice)", voiceMaleInput]));
+
   panel.appendChild(body);
   panel.appendChild(
     el(
       "p",
       { class: "panel-footnote" },
-      "Key dùng để gọi Whisper (STT), Chat Completions (dịch) và TTS trực tiếp từ trình duyệt của bạn tới api.openai.com. " +
-        "Không được ghi vào localStorage, không gửi tới bất kỳ máy chủ nào khác — nhưng vì đây là ứng dụng chạy phía trình duyệt (client-side), " +
-        "key sẽ xuất hiện trong tab Network của DevTools trên máy bạn. Lấy key tại platform.openai.com/api-keys."
+      "Key dùng để gọi Gemini (nhận diện lời thoại từ audio, dịch sang tiếng Việt, và tạo giọng nói) trực tiếp từ trình duyệt của bạn tới " +
+        "generativelanguage.googleapis.com. Không được ghi vào localStorage — nhưng vì đây là ứng dụng chạy phía trình duyệt (client-side), " +
+        "key sẽ xuất hiện trong tab Network của DevTools trên máy bạn; nên dùng key riêng, giới hạn ngân sách. Lấy key tại aistudio.google.com/apikey. " +
+        "Tên model và tên giọng nói (voice) có thể đổi theo model/giọng hiện có trong tài khoản Gemini của bạn — xem danh sách tại " +
+        "ai.google.dev/gemini-api/docs/speech-generation nếu model mặc định không khả dụng."
     )
   );
   return panel;
