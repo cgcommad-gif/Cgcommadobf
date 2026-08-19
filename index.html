@@ -1,26 +1,1022 @@
 <!doctype html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Website tạm đóng cửa</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>CG VietDub — Single File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%}
-body{display:flex;align-items:center;justify-content:center;background:#07090d;color:#fff;font-family:Arial,Helvetica,sans-serif}
-.card{width:min(92%,560px);padding:42px 28px;text-align:center;background:#0f1219;border:1px solid #29313f;border-radius:18px;box-shadow:0 20px 70px rgba(0,0,0,.55)}
-.icon{font-size:52px;margin-bottom:18px}h1{margin:0 0 14px;font-size:28px}
-p{margin:0;color:#aeb8c8;line-height:1.7;font-size:15px}
-.status{display:inline-block;margin-top:24px;padding:9px 14px;border-radius:999px;background:#1a202b;color:#8f9bad;font-size:13px}
-small{display:block;margin-top:22px;color:#697386;font-size:12px}
+/* ============================================================
+   CG VietDub — theme lay cam hung tu son mai Viet Nam
+   ============================================================ */
+:root {
+  --bg: #0e0b0a; --surface: #17130f; --surface-2: #1f1a15; --border: #2c2620;
+  --red: #c1402f; --red-soft: #c1402f33; --gold: #d3a65a; --gold-soft: #d3a65a26;
+  --teal: #4a9686; --text: #f3ebdf; --text-dim: #b3a696; --text-faint: #7d7266;
+  --radius: 10px; --font-display: "Space Grotesk","Inter",sans-serif; --font-body: "Inter",sans-serif;
+}
+* { box-sizing: border-box; }
+html,body,#root{ height:100%; }
+body{ margin:0; background: radial-gradient(ellipse at top,#1a1410 0%,#0e0b0a 55%); color:var(--text); font-family:var(--font-body); -webkit-font-smoothing:antialiased; }
+.app-shell{ min-height:100%; display:flex; flex-direction:column; }
+.app-header{ display:flex; align-items:baseline; gap:12px; padding:18px 20px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,#14100c 0%,#0e0b0a 100%); position:sticky; top:0; z-index:20; }
+.brand{ display:flex; align-items:baseline; gap:6px; font-family:var(--font-display); }
+.brand-mark{ color:var(--gold); font-weight:700; font-size:22px; letter-spacing:1px; }
+.brand-name{ font-weight:600; font-size:22px; color:var(--text); }
+.brand-tag{ color:var(--text-faint); font-size:13px; margin-left:auto; text-align:right; }
+.app-main{ flex:1; display:grid; grid-template-columns:1fr; gap:20px; padding:16px; max-width:1200px; width:100%; margin:0 auto; }
+@media (min-width:960px){ .app-main{ grid-template-columns:1.3fr 1fr; align-items:start; padding:24px; } }
+.notice{ background:var(--gold-soft); border:1px solid var(--gold); color:var(--text); padding:10px 14px; border-radius:8px; font-size:12.5px; margin:12px 16px 0; line-height:1.5; }
+.notice a{ color:var(--gold); }
+.upload-zone{ border:1.5px dashed var(--border); border-radius:var(--radius); background:var(--surface); padding:48px 24px; text-align:center; cursor:pointer; transition:border-color .2s, background .2s; }
+.upload-zone.is-dragover{ border-color:var(--gold); background:var(--gold-soft); }
+.upload-icon{ font-size:32px; color:var(--gold); margin-bottom:8px; }
+.upload-title{ font-family:var(--font-display); font-size:16px; margin:4px 0; }
+.upload-sub{ color:var(--text-faint); font-size:13px; }
+.upload-file-name{ font-weight:600; }
+.upload-file-meta{ color:var(--text-faint); font-size:13px; margin-top:2px; }
+.video-stage-wrap{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px; }
+.video-stage{ position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:6px; overflow:hidden; user-select:none; }
+.video-el{ width:100%; height:100%; object-fit:contain; background:#000; }
+.video-placeholder{ display:flex; align-items:center; justify-content:center; height:100%; color:var(--text-faint); }
+.cover-region{ position:absolute; border:1.5px solid var(--gold); cursor:move; display:flex; align-items:flex-start; justify-content:space-between; }
+.cover-region-label{ font-size:10px; color:var(--gold); background:#0e0b0acc; padding:1px 5px; border-radius:3px; margin:3px; }
+.cover-region-remove{ background:var(--red); color:#fff; border:none; width:18px; height:18px; border-radius:50%; font-size:10px; cursor:pointer; margin:3px; }
+.cover-region-handle{ position:absolute; right:-4px; bottom:-4px; width:14px; height:14px; background:var(--gold); border-radius:3px; cursor:nwse-resize; }
+.video-stage-actions{ display:flex; align-items:center; gap:12px; padding:10px 4px 2px; flex-wrap:wrap; }
+.hint{ color:var(--text-faint); font-size:12px; }
+.stepper{ margin:18px 4px 6px; }
+.stepper-track{ position:relative; height:4px; background:var(--surface-2); border-radius:3px; margin:0 6px; }
+.stepper-fill{ position:absolute; height:100%; background:linear-gradient(90deg,var(--red),var(--gold)); border-radius:3px; transition:width .3s; }
+.stepper-node{ position:absolute; top:50%; width:9px; height:9px; border-radius:50%; background:var(--surface-2); border:2px solid var(--border); transform:translate(-50%,-50%); }
+.stepper-node.is-active{ background:var(--gold); border-color:var(--gold); }
+.stepper-node.is-failed{ background:var(--red); border-color:var(--red); }
+.stepper-labels{ display:flex; justify-content:space-between; margin-top:8px; font-size:9.5px; color:var(--text-faint); }
+.stepper-labels .is-active{ color:var(--gold); }
+.stepper-progress{ text-align:right; font-size:12px; color:var(--text-dim); margin-top:4px; }
+.tab-bar{ display:flex; overflow-x:auto; gap:6px; padding-bottom:8px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.tab-btn{ background:transparent; border:1px solid transparent; color:var(--text-faint); padding:8px 12px; border-radius:8px; font-size:13px; cursor:pointer; white-space:nowrap; font-family:var(--font-display); }
+.tab-btn.is-active{ color:var(--bg); background:var(--gold); }
+.panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:14px; }
+.panel-header{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); }
+.panel-header h3{ margin:0; font-family:var(--font-display); font-size:15px; }
+.panel-count{ color:var(--text-faint); font-size:12px; }
+.panel-body{ padding:14px; }
+.panel-footnote{ padding:0 14px 14px; color:var(--text-faint); font-size:11px; margin:0; }
+.segment-list{ max-height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+.segment-row{ display:flex; flex-direction:column; gap:4px; background:var(--surface-2); padding:8px; border-radius:8px; }
+.segment-time{ font-size:11px; color:var(--gold); font-family:var(--font-display); }
+.segment-text{ background:transparent; border:none; color:var(--text); resize:vertical; font-family:var(--font-body); font-size:14px; width:100%; }
+.segment-text:focus{ outline:1px solid var(--gold); }
+.empty-hint{ color:var(--text-faint); font-size:13px; }
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.form-grid label{ display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--text-dim); }
+.form-grid select, .form-grid input[type=range], .form-grid input[type=text], .form-grid input[type=password]{ width:100%; }
+.form-grid select, .form-grid input[type=text], .form-grid input[type=password]{ background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:7px; font-family:var(--font-body); }
+.form-grid input[type=color]{ width:100%; height:32px; border:1px solid var(--border); border-radius:6px; background:var(--surface-2); }
+.toggle{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-dim); }
+.btn{ font-family:var(--font-display); font-size:13px; border-radius:8px; padding:10px 16px; border:1px solid var(--border); cursor:pointer; background:var(--surface-2); color:var(--text); text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.btn-primary{ background:linear-gradient(90deg,var(--red),#a8331f); border-color:transparent; color:#fff; }
+.btn-primary:disabled{ opacity:.45; cursor:not-allowed; }
+.btn-ghost{ background:transparent; }
+.btn-block{ width:100%; margin-top:10px; }
+.btn-disabled{ pointer-events:none; opacity:.4; }
+.action-row{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+.chip{ border:1px solid var(--border); background:var(--surface-2); color:var(--text-dim); border-radius:20px; padding:6px 12px; font-size:12px; cursor:pointer; }
+.chip-active{ border-color:var(--gold); color:var(--gold); }
+.export-modes{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+.export-sub-row{ display:flex; gap:8px; margin-top:8px; }
+.export-sub-row .btn{ flex:1; }
+.error-banner{ margin-top:12px; background:var(--red-soft); border:1px solid var(--red); color:#ffd7cf; padding:10px 12px; border-radius:8px; font-size:13px; white-space:pre-wrap; }
+.log-box{ background:#0a0807; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-family:monospace; font-size:11px; color:var(--text-faint); max-height:120px; overflow-y:auto; margin-top:10px; white-space:pre-wrap; }
 </style>
 </head>
 <body>
-<div class="card">
-<div class="icon">🔧</div>
-<h1>Website đã đóng cửa</h1>
-<p>Website hiện đang tạm đóng cửa để tiến hành nâng cấp hệ thống.<br>Vui lòng quay lại sau khi quá trình nâng cấp hoàn tất.</p>
-<div class="status">● Đang nâng cấp</div>
-<small>Cảm ơn bạn đã thông cảm.</small>
-</div>
+<div id="root" class="app-shell"></div>
+<script type="module">
+// ============================================================
+// CG VietDub — ban gop 1 file HTML, chay hoan toan trong trinh
+// duyet bang ffmpeg.wasm (khong can Node.js backend).
+//
+// GIOI HAN THAT SU (khong gia vo la lam duoc het):
+// - Video/audio duoc xu ly bang ffmpeg.wasm (WebAssembly) chay
+//   ngay trong tab trinh duyet. Phu hop voi clip NGAN (vai phut,
+//   duoi ~150-200MB). Clip dai/nang co the cham hoac het bo nho,
+//   vi trinh duyet gioi han RAM cho WebAssembly.
+// - STT / Dich / TTS goi THANG toi API cua OpenAI tu trinh duyet
+//   bang API key ban nhap o tab Settings. Key CHI luu trong bo
+//   nho JS (bien "state.apiKey"), KHONG ghi vao localStorage,
+//   KHONG gui di dau khac ngoai OpenAI — nhung vi day la ung dung
+//   client-side, key se hien trong DevTools/Network của chinh may
+//   ban. Neu can bao mat key that su, hay dung ban backend (co
+//   the tao rieng) de giu key phia server.
+// - Phai mo file nay qua may chu tinh (http/https), KHONG mo truc
+//   tiep bang duong dan file:// — vi trinh duyet chan ES module
+//   va fetch tu CDN khi chay o file://. Vi du:
+//     npx serve .          hoac
+//     python3 -m http.server 8080
+//   roi mo http://localhost:8080
+// ============================================================
+
+import { FFmpeg } from "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
+import { fetchFile, toBlobURL } from "https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js";
+
+const FFMPEG_CORE_BASE = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm";
+// Font co day du dau tieng Viet, dung cho drawtext khi burn phu de.
+// Neu link nay bi doi/404, thay bang bat ky URL .ttf cong khai nao khac.
+const VIET_FONT_URL =
+  "https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSans/full/ttf/NotoSans-Regular.ttf";
+
+const STEPS = [
+  { key: "uploaded", label: "Uploading" },
+  { key: "transcribing", label: "Transcribing" },
+  { key: "translating", label: "Translating" },
+  { key: "generating_voice", label: "Generating Voice" },
+  { key: "processing_subtitle", label: "Processing Subtitle" },
+  { key: "rendering", label: "Rendering" },
+  { key: "completed", label: "Completed" },
+];
+
+const state = {
+  ffmpeg: null,
+  ffmpegReady: false,
+  apiKey: "",
+  file: null,
+  videoUrl: null,
+  inputName: null, // ten file da ghi vao FS ao cua ffmpeg
+  duration: 0,
+  width: 1280,
+  height: 720,
+  status: "uploaded",
+  progress: 0,
+  busy: false,
+  error: null,
+  log: [],
+  transcript: [],
+  translation: [],
+  coverRegions: [],
+  subtitleStyle: {
+    font: "NotoSans",
+    fontSize: 28,
+    position: "bottom",
+    color: "#FFFFFF",
+    outline: "#000000",
+    background: "on",
+  },
+  voiceSettings: { voice: "female", speed: 1.0, mixVolume: 0.8 },
+  showVietSub: true,
+  showDub: false,
+  activeTab: "transcript",
+  hasDubAudio: false,
+  finalBlobUrl: null,
+  fontLoaded: false,
+  dragging: null,
+};
+
+const root = document.getElementById("root");
+
+// ---------------- utils ----------------
+function fmtTime(t) {
+  const m = Math.floor(t / 60);
+  const s = (t % 60).toFixed(1);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(4, "0")}`;
+}
+function fmtBytes(b) {
+  if (!b) return "0 B";
+  const u = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(b) / Math.log(1024));
+  return `${(b / Math.pow(1024, i)).toFixed(1)} ${u[i]}`;
+}
+function escapeDrawtext(text) {
+  // Escape dung quy tac cua ffmpeg drawtext: \ : ' %
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/:/g, "\\:")
+    .replace(/'/g, "\u2019") // doi nhay don thanh nhay cong de tranh loi parse
+    .replace(/%/g, "\\%")
+    .replace(/\n/g, "\\n");
+}
+function wrapText(text, maxChars = 42) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    if ((cur + " " + w).trim().length > maxChars) {
+      if (cur) lines.push(cur.trim());
+      cur = w;
+    } else {
+      cur = (cur + " " + w).trim();
+    }
+  }
+  if (cur) lines.push(cur.trim());
+  if (lines.length > 2) {
+    const mid = Math.ceil(lines.length / 2);
+    return [lines.slice(0, mid).join(" "), lines.slice(mid).join(" ")].join("\n");
+  }
+  return lines.join("\n");
+}
+function log(msg) {
+  state.log.push(msg);
+  if (state.log.length > 200) state.log.shift();
+  renderLog();
+}
+function setError(msg) {
+  state.error = msg;
+  if (msg) log("LOI: " + msg);
+  renderError();
+}
+function setStatus(status, progress) {
+  state.status = status;
+  if (progress !== undefined) state.progress = progress;
+  renderStepper();
+}
+
+// ---------------- ffmpeg setup ----------------
+async function ensureFFmpeg() {
+  if (state.ffmpegReady) return state.ffmpeg;
+  const ffmpeg = new FFmpeg();
+  ffmpeg.on("log", ({ message }) => log(message));
+  log("Dang tai FFmpeg engine (WebAssembly)... lan dau co the mat vai giay.");
+  ffmpeg.on("progress", ({ progress }) => {
+    if (state.status === "rendering") {
+      const p = 90 + Math.min(9, Math.round((progress || 0) * 9));
+      setStatus("rendering", p);
+    }
+  });
+  await ffmpeg.load({
+    coreURL: await toBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
+    wasmURL: await toBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`, "application/wasm"),
+  });
+  state.ffmpeg = ffmpeg;
+  state.ffmpegReady = true;
+  log("FFmpeg engine da san sang.");
+  return ffmpeg;
+}
+
+async function ensureFont() {
+  if (state.fontLoaded) return;
+  const ffmpeg = await ensureFFmpeg();
+  log("Dang tai font tieng Viet cho phu de...");
+  try {
+    const fontData = await fetchFile(VIET_FONT_URL);
+    await ffmpeg.writeFile("font.ttf", fontData);
+    state.fontLoaded = true;
+    log("Da tai font xong.");
+  } catch (e) {
+    throw new Error(
+      "Khong tai duoc font tieng Viet de burn phu de (kiem tra ket noi mang / link font). " + e.message
+    );
+  }
+}
+
+// ---------------- pipeline steps ----------------
+async function probeMeta(file) {
+  return new Promise((resolve, reject) => {
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      resolve({ duration: v.duration, width: v.videoWidth || 1280, height: v.videoHeight || 720 });
+      URL.revokeObjectURL(v.src);
+    };
+    v.onerror = () => reject(new Error("Khong doc duoc metadata video. File co the bi loi hoac dinh dang khong ho tro."));
+    v.src = URL.createObjectURL(file);
+  });
+}
+
+async function handleFileSelected(file) {
+  const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
+  const allowed = ["mp4", "mkv", "webm", "mov", "avi"];
+  if (!allowed.includes(ext)) {
+    setError(`Dinh dang khong ho tro: .${ext}. Chi ho tro ${allowed.join(", ")}`);
+    return;
+  }
+  setError(null);
+  state.file = file;
+  state.videoUrl = URL.createObjectURL(file);
+  state.inputName = "input." + ext;
+  try {
+    const meta = await probeMeta(file);
+    state.duration = meta.duration;
+    state.width = meta.width;
+    state.height = meta.height;
+  } catch (e) {
+    setError(e.message);
+    return;
+  }
+  setStatus("uploaded", 5);
+  renderApp();
+
+  // Ghi file vao he thong file ao cua ffmpeg.wasm de dung cho cac buoc sau
+  try {
+    const ffmpeg = await ensureFFmpeg();
+    log("Dang ghi video vao bo nho xu ly (ffmpeg virtual FS)...");
+    await ffmpeg.writeFile(state.inputName, await fetchFile(file));
+    log("Da san sang de xu ly.");
+  } catch (e) {
+    setError("Khong the tai FFmpeg engine: " + e.message);
+  }
+}
+
+async function extractAudio() {
+  const ffmpeg = await ensureFFmpeg();
+  await ffmpeg.exec(["-i", state.inputName, "-vn", "-ar", "16000", "-ac", "1", "audio.wav"]);
+  const data = await ffmpeg.readFile("audio.wav");
+  return new Blob([data.buffer], { type: "audio/wav" });
+}
+
+function requireApiKey() {
+  if (!state.apiKey || state.apiKey.trim().length < 10) {
+    throw new Error(
+      "Chua nhap OpenAI API key. Mo tab Settings va dan API key cua ban (chi luu tam trong bo nho trinh duyet, mat khi tai lai trang)."
+    );
+  }
+}
+
+async function transcribeAudio(blob) {
+  requireApiKey();
+  const form = new FormData();
+  form.append("file", blob, "audio.wav");
+  form.append("model", "whisper-1");
+  form.append("response_format", "verbose_json");
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${state.apiKey}` },
+    body: form,
+  });
+  if (!res.ok) throw new Error(`OpenAI STT loi (${res.status}): ${await res.text()}`);
+  const data = await res.json();
+  const segments = data.segments || [];
+  return segments.map((s, idx) => ({ id: idx + 1, start: s.start, end: s.end, text: s.text.trim() }));
+}
+
+async function translateSegments(segments) {
+  requireApiKey();
+  const numbered = segments.map((s, i) => `${i + 1}. ${s.text}`).join("\n");
+  const prompt = `Ban la bien dich vien chuyen nghiep. Hay dich cac cau sau tu ngon ngu goc sang tieng Viet tu nhien, giu dung van phong hoi thoai. TRA VE DUNG DINH DANG: moi dong la "so_thu_tu. ban dich", khong them giai thich, khong gop hoac tach dong.\n\n${numbered}`;
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${state.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenAI Translate loi (${res.status}): ${await res.text()}`);
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content || "";
+  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
+  return segments.map((seg, idx) => {
+    const line = lines[idx] || "";
+    const cleaned = line.replace(/^\d+\.\s*/, "").trim();
+    return { id: seg.id, start: seg.start, end: seg.end, text: cleaned || seg.text };
+  });
+}
+
+async function synthesizeSegment(text, gender, speed) {
+  requireApiKey();
+  const voice = gender === "male" ? "onyx" : "nova";
+  const res = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${state.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "tts-1",
+      voice,
+      input: text,
+      speed: Math.min(4.0, Math.max(0.25, speed)),
+      response_format: "mp3",
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenAI TTS loi (${res.status}): ${await res.text()}`);
+  return new Uint8Array(await res.arrayBuffer());
+}
+
+async function generateVoiceTrack() {
+  const ffmpeg = await ensureFFmpeg();
+  const segFiles = [];
+  for (const seg of state.translation) {
+    if (!seg.text.trim()) continue;
+    const bytes = await synthesizeSegment(seg.text, state.voiceSettings.voice, state.voiceSettings.speed);
+    const fname = `tts_${seg.id}.mp3`;
+    await ffmpeg.writeFile(fname, bytes);
+    segFiles.push({ start: seg.start, fname });
+  }
+  if (segFiles.length === 0) throw new Error("Khong co cau nao de tao giong doc.");
+
+  const args = [];
+  segFiles.forEach((s) => args.push("-i", s.fname));
+  const delayFilters = segFiles.map((s, i) => {
+    const ms = Math.max(0, Math.round(s.start * 1000));
+    return `[${i}:a]adelay=${ms}|${ms}[d${i}]`;
+  });
+  const mixInputs = segFiles.map((_, i) => `[d${i}]`).join("");
+  const filterComplex = [
+    ...delayFilters,
+    `${mixInputs}amix=inputs=${segFiles.length}:duration=longest:dropout_transition=0[aout]`,
+  ].join(";");
+  args.push("-filter_complex", filterComplex, "-map", "[aout]", "-t", String(state.duration), "dub.wav");
+
+  await ffmpeg.exec(args);
+  state.hasDubAudio = true;
+}
+
+function buildVideoFilterChain(includeSubtitle) {
+  const parts = [];
+  state.coverRegions.forEach((r) => {
+    const color = r.style === "blur" ? "black@0.55" : (r.color || "#000000").replace("#", "0x") + "@0.92";
+    parts.push(`drawbox=x=${Math.round(r.x)}:y=${Math.round(r.y)}:w=${Math.round(r.w)}:h=${Math.round(r.h)}:color=${color}:t=fill`);
+  });
+  if (includeSubtitle) {
+    const st = state.subtitleStyle;
+    const yExpr = st.position === "top" ? "h*0.06" : st.position === "middle" ? "(h-text_h)/2" : "h-text_h-h*0.08";
+    const box = st.background === "on" ? 1 : 0;
+    state.translation.forEach((seg) => {
+      if (!seg.text.trim()) return;
+      const text = escapeDrawtext(wrapText(seg.text));
+      parts.push(
+        `drawtext=fontfile=font.ttf:text='${text}':fontcolor=${st.color}:fontsize=${st.fontSize}:` +
+          `bordercolor=${st.outline}:borderw=2:box=${box}:boxcolor=black@0.4:boxborderw=8:` +
+          `x=(w-text_w)/2:y=${yExpr}:enable='between(t,${seg.start},${seg.end})'`
+      );
+    });
+  }
+  return parts.join(",");
+}
+
+async function renderFinal(mode) {
+  const ffmpeg = await ensureFFmpeg();
+  const includeSubtitle = mode !== "dub";
+  const includeDub = mode !== "subtitle";
+
+  if (includeSubtitle) await ensureFont();
+  if (includeDub && !state.hasDubAudio) throw new Error("Chua tao giong long tieng. Hay bam 'Tao giong long tieng' truoc.");
+
+  const videoChain = includeSubtitle ? buildVideoFilterChain(true) : "";
+  const args = ["-i", state.inputName];
+  let filterComplex = "";
+  const maps = [];
+
+  if (includeDub) args.push("-i", "dub.wav");
+
+  if (videoChain) {
+    filterComplex += `[0:v]${videoChain}[vout];`;
+    maps.push("-map", "[vout]");
+  } else {
+    maps.push("-map", "0:v");
+  }
+
+  if (includeDub) {
+    filterComplex += `[0:a]volume=${state.voiceSettings.mixVolume}[a0];[1:a]volume=1.0[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=2[aout];`;
+    maps.push("-map", "[aout]");
+  } else {
+    maps.push("-map", "0:a?");
+  }
+
+  args.push("-filter_complex", filterComplex.replace(/;$/, ""));
+  args.push(...maps);
+  args.push("-c:v", videoChain ? "libx264" : "copy", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "output.mp4");
+
+  log("Lenh FFmpeg: " + args.join(" "));
+  await ffmpeg.exec(args);
+  const data = await ffmpeg.readFile("output.mp4");
+  const blob = new Blob([data.buffer], { type: "video/mp4" });
+  state.finalBlobUrl = URL.createObjectURL(blob);
+}
+
+// ---------------- high level actions ----------------
+async function startProcessing() {
+  if (!state.file) return;
+  state.busy = true;
+  setError(null);
+  renderActionRow();
+  try {
+    setStatus("transcribing", 15);
+    log("Dang tach audio khoi video...");
+    const audioBlob = await extractAudio();
+    setStatus("transcribing", 30);
+    log("Dang nhan dien loi thoai (Whisper)...");
+    state.transcript = await transcribeAudio(audioBlob);
+    setStatus("translating", 45);
+    renderTab();
+
+    log("Dang dich sang tieng Viet...");
+    setStatus("translating", 60);
+    state.translation = await translateSegments(state.transcript);
+    setStatus("translating", 70);
+    state.activeTab = "translation";
+    renderTab();
+    renderTabBar();
+  } catch (e) {
+    setError(e.message);
+  } finally {
+    state.busy = false;
+    renderActionRow();
+    renderVideoStage();
+  }
+}
+
+async function confirmAndGenerateVoice() {
+  state.busy = true;
+  setError(null);
+  renderActionRow();
+  try {
+    setStatus("generating_voice", 78);
+    log("Dang tao giong long tieng (TTS)...");
+    await generateVoiceTrack();
+    setStatus("generating_voice", 85);
+    state.activeTab = "export";
+    renderTab();
+    renderTabBar();
+  } catch (e) {
+    setError(e.message);
+  } finally {
+    state.busy = false;
+    renderActionRow();
+  }
+}
+
+async function handleRender(mode) {
+  state.busy = true;
+  setError(null);
+  renderExportPanel();
+  try {
+    setStatus("processing_subtitle", 88);
+    log(`Dang render video (che=${mode})...`);
+    setStatus("rendering", 90);
+    await renderFinal(mode);
+    setStatus("completed", 100);
+  } catch (e) {
+    setError("Render that bai: " + e.message);
+  } finally {
+    state.busy = false;
+    renderExportPanel();
+  }
+}
+
+// ---------------- subtitle file export (SRT/VTT) ----------------
+function buildSrt(segments) {
+  const fmt = (t) => {
+    const ms = Math.round((t % 1) * 1000);
+    const tot = Math.floor(t);
+    const s = tot % 60, m = Math.floor(tot / 60) % 60, h = Math.floor(tot / 3600);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+  };
+  return segments.map((s, i) => `${i + 1}\n${fmt(s.start)} --> ${fmt(s.end)}\n${wrapText(s.text)}\n`).join("\n");
+}
+function buildVtt(segments) {
+  const fmt = (t) => {
+    const ms = Math.round((t % 1) * 1000);
+    const tot = Math.floor(t);
+    const s = tot % 60, m = Math.floor(tot / 60) % 60, h = Math.floor(tot / 3600);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+  };
+  const body = segments.map((s) => `${fmt(s.start)} --> ${fmt(s.end)}\n${wrapText(s.text)}\n`).join("\n");
+  return `WEBVTT\n\n${body}`;
+}
+function downloadText(filename, content) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ============================================================
+// DOM RENDERING (vanilla JS, khong dung framework de gon 1 file)
+// ============================================================
+
+function el(tag, attrs = {}, children = []) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on") && typeof v === "function") e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === "html") e.innerHTML = v;
+    else e.setAttribute(k, v);
+  }
+  (Array.isArray(children) ? children : [children]).forEach((c) => {
+    if (c === null || c === undefined) return;
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  });
+  return e;
+}
+
+function renderApp() {
+  root.innerHTML = "";
+  root.appendChild(
+    el("header", { class: "app-header" }, [
+      el("div", { class: "brand" }, [el("span", { class: "brand-mark" }, "CG"), el("span", { class: "brand-name" }, "VietDub")]),
+      el("span", { class: "brand-tag" }, "Vietsub & lồng tiếng AI · chạy 100% trong trình duyệt"),
+    ])
+  );
+  const notice = el(
+    "div",
+    { class: "notice" },
+    "⚠ Bản gộp 1 file HTML: xử lý video bằng FFmpeg WebAssembly ngay trong trình duyệt (không có backend). " +
+      "Nên dùng cho clip ngắn. STT/Dịch/TTS gọi trực tiếp OpenAI bằng API key bạn nhập ở tab Settings — key chỉ nằm trong bộ nhớ tạm, mất khi tải lại trang. " +
+      "Phải mở trang qua http/https (vd: npx serve .), không mở bằng file://."
+  );
+  root.appendChild(notice);
+
+  const main = el("main", { class: "app-main" });
+  const stageCol = el("section", { class: "stage-column", id: "stageCol" });
+  const panelCol = el("section", { class: "panel-column", id: "panelCol" });
+  main.appendChild(stageCol);
+  main.appendChild(panelCol);
+  root.appendChild(main);
+
+  renderVideoStage();
+  renderPanelColumn();
+}
+
+// ---------------- upload / video stage ----------------
+function renderVideoStage() {
+  const stageCol = document.getElementById("stageCol");
+  stageCol.innerHTML = "";
+
+  if (!state.file) {
+    const zone = el("div", { class: "upload-zone", id: "uploadZone" }, [
+      el("div", { class: "upload-icon" }, "⟁"),
+      el("p", { class: "upload-title" }, "Kéo video vào đây hoặc chạm để chọn file"),
+      el("p", { class: "upload-sub" }, "Hỗ trợ MP4, MKV, WebM, MOV · nên dùng clip ngắn (vài phút)"),
+    ]);
+    const input = el("input", { type: "file", accept: ".mp4,.mkv,.webm,.mov,.avi,video/*", style: "display:none" });
+    input.addEventListener("change", (e) => e.target.files[0] && handleFileSelected(e.target.files[0]));
+    zone.addEventListener("click", () => input.click());
+    zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("is-dragover"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("is-dragover"));
+    zone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.classList.remove("is-dragover");
+      if (e.dataTransfer.files[0]) handleFileSelected(e.dataTransfer.files[0]);
+    });
+    zone.appendChild(input);
+    stageCol.appendChild(zone);
+    return;
+  }
+
+  const wrap = el("div", { class: "video-stage-wrap" });
+  const stage = el("div", { class: "video-stage", id: "videoStage" });
+  const video = el("video", { class: "video-el", controls: "true", src: state.videoUrl });
+  stage.appendChild(video);
+  state.coverRegions.forEach((r, idx) => stage.appendChild(renderCoverRegionEl(r, idx)));
+  wrap.appendChild(stage);
+
+  const actions = el("div", { class: "video-stage-actions" }, [
+    el("button", { class: "btn btn-ghost", onclick: addCoverRegion }, "+ Thêm vùng che phụ đề gốc"),
+    el("span", { class: "hint" }, "Kéo để di chuyển · kéo góc dưới-phải để đổi kích thước"),
+  ]);
+  wrap.appendChild(actions);
+  stageCol.appendChild(wrap);
+
+  stageCol.appendChild(renderStepperEl());
+  stageCol.appendChild(el("div", { id: "errorSlot" }));
+  stageCol.appendChild(el("div", { class: "action-row", id: "actionRow" }));
+  stageCol.appendChild(el("div", { class: "log-box", id: "logBox" }));
+
+  renderError();
+  renderActionRow();
+  renderLog();
+
+  document.addEventListener("mousemove", onStageMouseMove);
+  document.addEventListener("mouseup", onStageMouseUp);
+}
+
+function addCoverRegion() {
+  const vw = state.width || 640, vh = state.height || 360;
+  state.coverRegions.push({ x: Math.round(vw * 0.1), y: Math.round(vh * 0.82), w: Math.round(vw * 0.8), h: Math.round(vh * 0.12), style: "box", color: "#000000" });
+  renderVideoStage();
+}
+function removeCoverRegion(idx) {
+  state.coverRegions.splice(idx, 1);
+  renderVideoStage();
+}
+function renderCoverRegionEl(r, idx) {
+  const box = el("div", {
+    class: "cover-region",
+    style: `left:${(r.x / (state.width || 1)) * 100}%;top:${(r.y / (state.height || 1)) * 100}%;width:${(r.w / (state.width || 1)) * 100}%;height:${(r.h / (state.height || 1)) * 100}%;background:${r.style === "blur" ? "rgba(20,15,12,0.55)" : r.color + "EA"};`,
+  });
+  box.appendChild(el("span", { class: "cover-region-label" }, `Vùng che ${idx + 1}`));
+  box.appendChild(el("button", { class: "cover-region-remove", onclick: (e) => { e.stopPropagation(); removeCoverRegion(idx); } }, "✕"));
+  const handle = el("div", { class: "cover-region-handle" });
+  handle.addEventListener("mousedown", (e) => { e.stopPropagation(); e.preventDefault(); startDrag(idx, "resize", e); });
+  box.appendChild(handle);
+  box.addEventListener("mousedown", (e) => { e.preventDefault(); startDrag(idx, "move", e); });
+  return box;
+}
+function startDrag(index, mode, e) {
+  state.dragging = { index, mode, startX: e.clientX, startY: e.clientY, orig: { ...state.coverRegions[index] } };
+}
+function onStageMouseMove(e) {
+  const d = state.dragging;
+  if (!d) return;
+  const stageEl = document.getElementById("videoStage");
+  if (!stageEl) return;
+  const rect = stageEl.getBoundingClientRect();
+  const scaleX = (state.width || rect.width) / rect.width;
+  const scaleY = (state.height || rect.height) / rect.height;
+  const dx = (e.clientX - d.startX) * scaleX;
+  const dy = (e.clientY - d.startY) * scaleY;
+  const r = state.coverRegions[d.index];
+  if (!r) return;
+  if (d.mode === "move") {
+    r.x = Math.max(0, Math.round(d.orig.x + dx));
+    r.y = Math.max(0, Math.round(d.orig.y + dy));
+  } else {
+    r.w = Math.max(20, Math.round(d.orig.w + dx));
+    r.h = Math.max(20, Math.round(d.orig.h + dy));
+  }
+  renderVideoStage();
+}
+function onStageMouseUp() {
+  state.dragging = null;
+}
+
+function renderStepperEl() {
+  const activeIdx = Math.max(0, STEPS.findIndex((s) => s.key === state.status));
+  const wrap = el("div", { class: "stepper", id: "stepperWrap" });
+  const track = el("div", { class: "stepper-track" });
+  track.appendChild(el("div", { class: "stepper-fill", style: `width:${state.progress}%` }));
+  STEPS.forEach((s, i) => {
+    track.appendChild(
+      el("div", {
+        class: `stepper-node ${i <= activeIdx ? "is-active" : ""} ${state.status === "failed" ? "is-failed" : ""}`,
+        style: `left:${(i / (STEPS.length - 1)) * 100}%`,
+        title: s.label,
+      })
+    );
+  });
+  wrap.appendChild(track);
+  const labels = el("div", { class: "stepper-labels" });
+  STEPS.forEach((s, i) => labels.appendChild(el("span", { class: i <= activeIdx ? "is-active" : "" }, s.label)));
+  wrap.appendChild(labels);
+  wrap.appendChild(el("div", { class: "stepper-progress" }, `${state.progress}%`));
+  return wrap;
+}
+function renderStepper() {
+  const old = document.getElementById("stepperWrap");
+  if (old) old.replaceWith(renderStepperEl());
+}
+function renderError() {
+  const slot = document.getElementById("errorSlot");
+  if (!slot) return;
+  slot.innerHTML = "";
+  if (state.error) slot.appendChild(el("div", { class: "error-banner" }, state.error));
+}
+function renderLog() {
+  const box = document.getElementById("logBox");
+  if (!box) return;
+  box.textContent = state.log.slice(-40).join("\n");
+  box.scrollTop = box.scrollHeight;
+}
+function renderActionRow() {
+  const row = document.getElementById("actionRow");
+  if (!row) return;
+  row.innerHTML = "";
+  if (state.transcript.length === 0) {
+    row.appendChild(
+      el(
+        "button",
+        { class: "btn btn-primary", disabled: state.busy ? "true" : null, onclick: startProcessing },
+        state.busy ? "Đang xử lý..." : "Start Processing"
+      )
+    );
+  } else if (state.translation.length > 0 && !state.hasDubAudio) {
+    row.appendChild(
+      el(
+        "button",
+        { class: "btn btn-primary", disabled: state.busy ? "true" : null, onclick: confirmAndGenerateVoice },
+        state.busy ? "Đang tạo giọng đọc..." : "Xác nhận & Tạo giọng lồng tiếng"
+      )
+    );
+  }
+}
+
+// ---------------- panel column (tabs) ----------------
+const TABS = ["transcript", "translation", "subtitle", "voice", "export", "settings"];
+const TAB_LABELS = {
+  transcript: "Transcript",
+  translation: "Vietnamese Translation",
+  subtitle: "Subtitle",
+  voice: "Voice",
+  export: "Export",
+  settings: "Settings",
+};
+
+function renderPanelColumn() {
+  const panelCol = document.getElementById("panelCol");
+  panelCol.innerHTML = "";
+  panelCol.appendChild(el("nav", { class: "tab-bar", id: "tabBar" }));
+  panelCol.appendChild(el("div", { class: "tab-content", id: "tabContent" }));
+  renderTabBar();
+  renderTab();
+}
+function renderTabBar() {
+  const bar = document.getElementById("tabBar");
+  if (!bar) return;
+  bar.innerHTML = "";
+  TABS.forEach((t) => {
+    bar.appendChild(
+      el(
+        "button",
+        {
+          class: `tab-btn ${state.activeTab === t ? "is-active" : ""}`,
+          onclick: () => { state.activeTab = t; renderTabBar(); renderTab(); },
+        },
+        TAB_LABELS[t]
+      )
+    );
+  });
+}
+function renderTab() {
+  const content = document.getElementById("tabContent");
+  if (!content) return;
+  content.innerHTML = "";
+  if (state.activeTab === "transcript") content.appendChild(renderSegmentPanel("Transcript", state.transcript, "Bấm 'Start Processing' để nhận diện lời thoại."));
+  else if (state.activeTab === "translation") content.appendChild(renderSegmentPanel("Vietnamese Translation", state.translation, "Bản dịch sẽ hiện ở đây sau khi dịch xong.", true));
+  else if (state.activeTab === "subtitle") content.appendChild(renderSubtitlePanel());
+  else if (state.activeTab === "voice") content.appendChild(renderVoicePanel());
+  else if (state.activeTab === "export") content.appendChild(renderExportPanelEl());
+  else if (state.activeTab === "settings") content.appendChild(renderSettingsPanel());
+}
+
+function renderSegmentPanel(title, segments, emptyHint, isVi) {
+  const panel = el("div", { class: "panel" });
+  panel.appendChild(
+    el("div", { class: "panel-header" }, [el("h3", {}, title), el("span", { class: "panel-count" }, `${segments.length} câu`)])
+  );
+  const body = el("div", { class: "panel-body segment-list" });
+  if (segments.length === 0) body.appendChild(el("p", { class: "empty-hint" }, emptyHint));
+  segments.forEach((seg, idx) => {
+    const row = el("div", { class: "segment-row" });
+    row.appendChild(el("div", { class: "segment-time" }, `${fmtTime(seg.start)} → ${fmtTime(seg.end)}`));
+    const ta = el("textarea", { class: "segment-text", rows: "2", lang: isVi ? "vi" : "" });
+    ta.value = seg.text;
+    ta.addEventListener("input", (e) => { segments[idx].text = e.target.value; });
+    row.appendChild(ta);
+    body.appendChild(row);
+  });
+  panel.appendChild(body);
+  return panel;
+}
+
+function renderSubtitlePanel() {
+  const st = state.subtitleStyle;
+  const panel = el("div", { class: "panel" });
+  const toggle = el("label", { class: "toggle" });
+  const cb = el("input", { type: "checkbox" });
+  cb.checked = state.showVietSub;
+  cb.addEventListener("change", (e) => (state.showVietSub = e.target.checked));
+  toggle.appendChild(cb);
+  toggle.appendChild(el("span", {}, "Hiện"));
+  panel.appendChild(el("div", { class: "panel-header" }, [el("h3", {}, "Phụ đề tiếng Việt"), toggle]));
+
+  const body = el("div", { class: "panel-body form-grid" });
+
+  const fontSel = el("select", {});
+  ["NotoSans"].forEach((f) => fontSel.appendChild(el("option", { value: f }, f + " (hỗ trợ dấu tiếng Việt)")));
+  fontSel.value = st.font;
+  body.appendChild(el("label", {}, ["Font chữ", fontSel]));
+
+  const sizeInput = el("input", { type: "range", min: "16", max: "48", value: String(st.fontSize) });
+  const sizeLabel = el("label", {}, [`Kích thước (${st.fontSize}px)`, sizeInput]);
+  sizeInput.addEventListener("input", (e) => { st.fontSize = Number(e.target.value); sizeLabel.firstChild.textContent = `Kích thước (${st.fontSize}px)`; });
+  body.appendChild(sizeLabel);
+
+  const posSel = el("select", {});
+  [["bottom", "Dưới"], ["middle", "Giữa"], ["top", "Trên"]].forEach(([v, l]) => posSel.appendChild(el("option", { value: v }, l)));
+  posSel.value = st.position;
+  posSel.addEventListener("change", (e) => (st.position = e.target.value));
+  body.appendChild(el("label", {}, ["Vị trí", posSel]));
+
+  const colorInput = el("input", { type: "color", value: st.color });
+  colorInput.addEventListener("input", (e) => (st.color = e.target.value));
+  body.appendChild(el("label", {}, ["Màu chữ", colorInput]));
+
+  const outlineInput = el("input", { type: "color", value: st.outline });
+  outlineInput.addEventListener("input", (e) => (st.outline = e.target.value));
+  body.appendChild(el("label", {}, ["Màu viền", outlineInput]));
+
+  const bgSel = el("select", {});
+  [["off", "Không nền"], ["on", "Nền mờ"]].forEach(([v, l]) => bgSel.appendChild(el("option", { value: v }, l)));
+  bgSel.value = st.background;
+  bgSel.addEventListener("change", (e) => (st.background = e.target.value));
+  body.appendChild(el("label", {}, ["Nền chữ", bgSel]));
+
+  panel.appendChild(body);
+  return panel;
+}
+
+function renderVoicePanel() {
+  const vs = state.voiceSettings;
+  const panel = el("div", { class: "panel" });
+  const toggle = el("label", { class: "toggle" });
+  const cb = el("input", { type: "checkbox" });
+  cb.checked = state.showDub;
+  cb.addEventListener("change", (e) => (state.showDub = e.target.checked));
+  toggle.appendChild(cb);
+  toggle.appendChild(el("span", {}, "Bật"));
+  panel.appendChild(el("div", { class: "panel-header" }, [el("h3", {}, "Lồng tiếng Việt"), toggle]));
+
+  const body = el("div", { class: "panel-body form-grid" });
+  const voiceSel = el("select", {});
+  [["female", "Nữ"], ["male", "Nam"]].forEach(([v, l]) => voiceSel.appendChild(el("option", { value: v }, l)));
+  voiceSel.value = vs.voice;
+  voiceSel.addEventListener("change", (e) => (vs.voice = e.target.value));
+  body.appendChild(el("label", {}, ["Giọng đọc", voiceSel]));
+
+  const speedInput = el("input", { type: "range", min: "0.75", max: "1.5", step: "0.05", value: String(vs.speed) });
+  const speedLabel = el("label", {}, [`Tốc độ đọc (${vs.speed.toFixed(2)}x)`, speedInput]);
+  speedInput.addEventListener("input", (e) => { vs.speed = Number(e.target.value); speedLabel.firstChild.textContent = `Tốc độ đọc (${vs.speed.toFixed(2)}x)`; });
+  body.appendChild(speedLabel);
+
+  const mixInput = el("input", { type: "range", min: "0", max: "1", step: "0.05", value: String(vs.mixVolume) });
+  const mixLabel = el("label", {}, [`Âm lượng gốc khi trộn (${Math.round(vs.mixVolume * 100)}%)`, mixInput]);
+  mixInput.addEventListener("input", (e) => { vs.mixVolume = Number(e.target.value); mixLabel.firstChild.textContent = `Âm lượng gốc khi trộn (${Math.round(vs.mixVolume * 100)}%)`; });
+  body.appendChild(mixLabel);
+
+  panel.appendChild(body);
+  panel.appendChild(el("p", { class: "panel-footnote" }, "Giọng đọc lấy từ giọng có sẵn của OpenAI TTS — không nhân bản giọng người thật."));
+  return panel;
+}
+
+function renderSettingsPanel() {
+  const panel = el("div", { class: "panel" });
+  panel.appendChild(el("div", { class: "panel-header" }, [el("h3", {}, "Settings — OpenAI API Key")]));
+  const body = el("div", { class: "panel-body" });
+  const keyInput = el("input", { type: "password", placeholder: "sk-...", value: state.apiKey });
+  keyInput.addEventListener("input", (e) => (state.apiKey = e.target.value.trim()));
+  body.appendChild(el("label", {}, ["OpenAI API Key (chỉ lưu tạm trong bộ nhớ trình duyệt)", keyInput]));
+  panel.appendChild(body);
+  panel.appendChild(
+    el(
+      "p",
+      { class: "panel-footnote" },
+      "Key dùng để gọi Whisper (STT), Chat Completions (dịch) và TTS trực tiếp từ trình duyệt của bạn tới api.openai.com. " +
+        "Không được ghi vào localStorage, không gửi tới bất kỳ máy chủ nào khác — nhưng vì đây là ứng dụng chạy phía trình duyệt (client-side), " +
+        "key sẽ xuất hiện trong tab Network của DevTools trên máy bạn. Lấy key tại platform.openai.com/api-keys."
+    )
+  );
+  return panel;
+}
+
+function renderExportPanelEl() {
+  const panel = el("div", { class: "panel panel-export", id: "exportPanel" });
+  panel.appendChild(el("div", { class: "panel-header" }, [el("h3", {}, "Export")]));
+  const body = el("div", { class: "panel-body" });
+
+  const modes = [
+    ["subtitle", "Video + Vietsub"],
+    ["dub", "Video + Lồng tiếng"],
+    ["subtitle_dub", "Video + Vietsub + Lồng tiếng"],
+  ];
+  if (!state._exportMode) state._exportMode = "subtitle_dub";
+  const modesRow = el("div", { class: "export-modes" });
+  modes.forEach(([v, l]) => {
+    const chip = el("button", { class: `chip ${state._exportMode === v ? "chip-active" : ""}` }, l);
+    chip.addEventListener("click", () => { state._exportMode = v; renderTab(); });
+    modesRow.appendChild(chip);
+  });
+  body.appendChild(modesRow);
+
+  const canRender = state.translation.length > 0;
+  const renderBtn = el(
+    "button",
+    { class: "btn btn-primary btn-block", disabled: !canRender || state.busy ? "true" : null, onclick: () => handleRender(state._exportMode) },
+    state.busy ? "Đang xử lý..." : "Export Video"
+  );
+  body.appendChild(renderBtn);
+
+  const downloads = el("div", { class: "export-downloads" });
+  const videoLink = el("a", { class: `btn btn-ghost btn-block ${state.finalBlobUrl ? "" : "btn-disabled"}`, download: "vietdub_output.mp4" }, "⬇ Tải video kết quả");
+  if (state.finalBlobUrl) videoLink.href = state.finalBlobUrl;
+  downloads.appendChild(videoLink);
+
+  const subRow = el("div", { class: "export-sub-row" });
+  const srtBtn = el("a", { class: `btn btn-ghost ${state.translation.length ? "" : "btn-disabled"}` }, "⬇ SRT");
+  srtBtn.addEventListener("click", (e) => { e.preventDefault(); downloadText("vietsub.srt", buildSrt(state.translation)); });
+  const vttBtn = el("a", { class: `btn btn-ghost ${state.translation.length ? "" : "btn-disabled"}` }, "⬇ VTT");
+  vttBtn.addEventListener("click", (e) => { e.preventDefault(); downloadText("vietsub.vtt", buildVtt(state.translation)); });
+  subRow.appendChild(srtBtn);
+  subRow.appendChild(vttBtn);
+  downloads.appendChild(subRow);
+  body.appendChild(downloads);
+
+  panel.appendChild(body);
+  return panel;
+}
+function renderExportPanel() {
+  if (state.activeTab === "export") renderTab();
+  const old = document.getElementById("stepperWrap");
+  if (old) old.replaceWith(renderStepperEl());
+  renderError();
+  renderLog();
+}
+
+// ---------------- boot ----------------
+renderApp();
+
+</script>
 </body>
 </html>
